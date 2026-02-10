@@ -19,6 +19,77 @@ RepLift est une application web minimaliste et performante pour suivre vos perfo
 
 ---
 
+## 🔢 Versioning
+
+RepLift utilise **Semantic Versioning** : `MAJOR.MINOR.PATCH`
+
+### Version actuelle : **v1.0.1**
+*Dernière mise à jour : 10 Février 2026*
+
+### Règles d'incrémentation
+
+#### MAJOR (v2.0.0, v3.0.0...)
+Changements **breaking** qui cassent le fonctionnement existant :
+- Modification du format de données localStorage incompatible
+- Refonte complète de l'architecture
+- Suppression de fonctionnalités majeures
+- Changement radical d'UI/UX qui bouleverse l'usage
+- Migration vers un framework (React, Vue...)
+
+#### MINOR (v1.1.0, v1.2.0...)
+Nouvelles **fonctionnalités** sans casser l'existant :
+- Ajout d'une nouvelle page (ex: Nutrition, Objectifs)
+- Nouvelle feature majeure (ex: Chronomètre, Mode clair/sombre)
+- Nouveau type de stats/graphique
+- Nouvelles intégrations (export PDF, partage social)
+- Amélioration significative d'une feature existante
+
+#### PATCH (v1.0.1, v1.0.2...)
+**Corrections** et petites améliorations :
+- Bug fixes
+- Correctifs CSS/UI mineurs
+- Optimisations de performance
+- Typos dans les textes
+- Mises à jour de sécurité
+- Ajustements responsive
+- Amélioration de code interne sans impact utilisateur
+
+### Exemples d'incrémentation
+
+| Changement | Avant | Après | Raison |
+|---|---|---|---|
+| Fix bug générer données test | v1.0.0 | v1.0.1 | Bug fix = PATCH |
+| Ajout responsive | v1.0.1 | v1.0.2 | Amélioration UI = PATCH |
+| Ajout chronomètre de repos | v1.0.2 | v1.1.0 | Nouvelle feature = MINOR |
+| Ajout mode clair | v1.1.0 | v1.2.0 | Nouvelle feature = MINOR |
+| Refonte complète en React | v1.2.0 | v2.0.0 | Breaking change = MAJOR |
+
+### Changelog
+
+**v1.0.1** — 10 Février 2026
+- 🎨 Refonte responsive complète
+- ✅ Système de 48 CSS variables (couleurs, espacements, fonts)
+- ✅ Typographie fluide avec `clamp()` (320px → 1200px+)
+- ✅ 6 breakpoints (< 360px, tablets, desktop, > 1200px)
+- ✅ Safe areas pour iPhone notch/Dynamic Island
+- ✅ Touch targets minimum 44px (accessibilité)
+- ✅ Gestion landscape, reduced motion, hover/touch
+- ✅ CSS : 1018 → 1500 lignes
+- ✅ Footer avec version + crédit
+- 🐛 Fix iOS zoom sur inputs (font-size: 16px)
+
+**v1.0.0** — 10 Février 2026
+- ✨ Release initiale production-ready
+- ✅ Programmes personnalisables (CRUD)
+- ✅ Sessions avec ghost data
+- ✅ Stats avancées (6 sections)
+- ✅ Graphiques d'évolution Canvas
+- ✅ Export/Import/Test data
+- ✅ Architecture 3 couches (Data/Stats/UI)
+- ✅ Protection XSS + cache optimisé
+
+---
+
 ## ✨ Fonctionnalités
 
 ### 🎯 Core Features
