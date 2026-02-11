@@ -1,6 +1,6 @@
 'use strict';
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.1.1';
 
 // ================================================================
 // DATA LAYER — Single source of truth via localStorage
@@ -960,35 +960,54 @@ const AppUI = {
     var overlays = document.querySelectorAll('.overlay');
     overlays.forEach(function(overlay) {
       var startY = 0;
+      var startX = 0;
       var currentY = 0;
       var dragging = false;
-      var content = overlay.querySelector('.overlay-content') || overlay;
+      var header = overlay.querySelector('.overlay-header');
+      if (!header) return; // Only overlays with a header support swipe
 
-      content.addEventListener('touchstart', function(e) {
-        if (content.scrollTop > 0) return;
+      // Swipe is ONLY detected on the header bar, never on content/inputs
+      header.addEventListener('touchstart', function(e) {
         startY = e.touches[0].clientY;
+        startX = e.touches[0].clientX;
+        currentY = startY;
         dragging = true;
       }, { passive: true });
 
-      content.addEventListener('touchmove', function(e) {
+      header.addEventListener('touchmove', function(e) {
         if (!dragging) return;
         currentY = e.touches[0].clientY;
-        var diff = currentY - startY;
-        if (diff > 0) {
-          content.style.transform = 'translateY(' + diff + 'px)';
-          content.style.transition = 'none';
+        var dx = Math.abs(e.touches[0].clientX - startX);
+        var dy = currentY - startY;
+        // Cancel if horizontal movement is dominant (user is scrolling sideways)
+        if (dx > 30) { dragging = false; return; }
+        if (dy > 0) {
+          overlay.style.transform = 'translateY(' + dy + 'px)';
+          overlay.style.transition = 'none';
         }
       }, { passive: true });
 
-      content.addEventListener('touchend', function() {
-        if (!dragging) return;
+      header.addEventListener('touchend', function() {
+        if (!dragging) { overlay.style.transform = ''; return; }
         dragging = false;
         var diff = currentY - startY;
-        content.style.transition = 'transform .3s ease';
-        if (diff > 120) {
-          overlay.classList.remove('active');
+        overlay.style.transition = 'transform .3s ease';
+        if (diff > 180) {
+          overlay.style.transform = 'translateY(100%)';
+          setTimeout(function() {
+            AppUI.closeOverlay(overlay.id);
+            overlay.style.transform = '';
+            overlay.style.transition = '';
+          }, 300);
+        } else {
+          overlay.style.transform = '';
         }
-        content.style.transform = '';
+      });
+
+      header.addEventListener('touchcancel', function() {
+        dragging = false;
+        overlay.style.transform = '';
+        overlay.style.transition = '';
       });
     });
   },
@@ -1841,37 +1860,53 @@ const AppUI = {
       }
     });
 
-    // Touch & mouse tooltip
+    // Touch & mouse tooltip — only bind once, update refs on re-render
     const tooltip = document.getElementById('chart-tooltip');
-    if (tooltip) {
-      var self = this;
-      var findNearest = function(clientX, clientY) {
-        var rect = canvas.getBoundingClientRect();
-        var mx = (clientX - rect.left) * (displayWidth / rect.width);
-        var nearest = null;
-        var minDist = Infinity;
-        sessions.forEach(function(s, i) {
-          var dx = Math.abs(getX(i) - mx);
-          if (dx < minDist) { minDist = dx; nearest = { s: s, x: getX(i), y: getY(s.weight), i: i }; }
-        });
-        return nearest;
-      };
-      var showTip = function(clientX, clientY) {
-        var hit = findNearest(clientX, clientY);
-        if (!hit || !hit.s) { tooltip.classList.remove('show'); return; }
-        var date = new Date(hit.s.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-        tooltip.textContent = hit.s.weight + ' kg — ' + date + (hit.s.reps ? ' (' + hit.s.reps + ' reps)' : '');
-        var rect = canvas.getBoundingClientRect();
-        tooltip.style.left = (rect.left + hit.x * (rect.width / displayWidth)) + 'px';
-        tooltip.style.top = (rect.top + hit.y * (rect.height / displayHeight) - 40) + 'px';
-        tooltip.classList.add('show');
-      };
-      canvas.addEventListener('touchstart', function(e) { showTip(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
-      canvas.addEventListener('touchmove', function(e) { showTip(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+    if (tooltip && !canvas._chartBound) {
+      canvas._chartBound = true;
+      canvas._cData = { getX: getX, getY: getY, sessions: sessions, dw: displayWidth, dh: displayHeight };
+
+      canvas.addEventListener('touchstart', function(e) {
+        var h = AppUI._findChartHit(canvas, e.touches[0].clientX);
+        AppUI._showChartTip(canvas, tooltip, h);
+      }, { passive: true });
+      canvas.addEventListener('touchmove', function(e) {
+        var h = AppUI._findChartHit(canvas, e.touches[0].clientX);
+        AppUI._showChartTip(canvas, tooltip, h);
+      }, { passive: true });
       canvas.addEventListener('touchend', function() { tooltip.classList.remove('show'); });
-      canvas.addEventListener('mousemove', function(e) { showTip(e.clientX, e.clientY); });
+      canvas.addEventListener('mousemove', function(e) {
+        var h = AppUI._findChartHit(canvas, e.clientX);
+        AppUI._showChartTip(canvas, tooltip, h);
+      });
       canvas.addEventListener('mouseleave', function() { tooltip.classList.remove('show'); });
+    } else if (canvas._chartBound) {
+      canvas._cData = { getX: getX, getY: getY, sessions: sessions, dw: displayWidth, dh: displayHeight };
     }
+  },
+
+  _findChartHit(canvas, clientX) {
+    var d = canvas._cData;
+    if (!d) return null;
+    var rect = canvas.getBoundingClientRect();
+    var mx = (clientX - rect.left) * (d.dw / rect.width);
+    var nearest = null, minDist = Infinity;
+    d.sessions.forEach(function(s, i) {
+      var dx = Math.abs(d.getX(i) - mx);
+      if (dx < minDist) { minDist = dx; nearest = { s: s, x: d.getX(i), y: d.getY(s.weight) }; }
+    });
+    return nearest;
+  },
+
+  _showChartTip(canvas, tooltip, hit) {
+    if (!hit || !hit.s) { tooltip.classList.remove('show'); return; }
+    var d = canvas._cData;
+    var date = new Date(hit.s.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+    tooltip.textContent = hit.s.weight + ' kg \u2014 ' + date + (hit.s.reps ? ' (' + hit.s.reps + ' reps)' : '');
+    var rect = canvas.getBoundingClientRect();
+    tooltip.style.left = (rect.left + hit.x * (rect.width / d.dw)) + 'px';
+    tooltip.style.top = (rect.top + hit.y * (rect.height / d.dh) - 40) + 'px';
+    tooltip.classList.add('show');
   },
 
   // --- Overlays ---
@@ -1880,6 +1915,11 @@ const AppUI = {
   },
   closeOverlay(id) {
     document.getElementById(id).classList.remove('active');
+    // Hide chart tooltip if closing the chart overlay
+    if (id === 'overlay-exercise-chart') {
+      var tip = document.getElementById('chart-tooltip');
+      if (tip) tip.classList.remove('show');
+    }
   },
 
   // --- Profile ---
