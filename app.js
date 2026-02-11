@@ -1,5 +1,7 @@
 'use strict';
 
+const APP_VERSION = '1.1.0';
+
 // ================================================================
 // DATA LAYER — Single source of truth via localStorage
 // ================================================================
@@ -8,7 +10,7 @@ const AppData = {
   _cache: null,
 
   getDefaultData() {
-    return { programs: [], sessions: [], user: { name: '' } };
+    return { version: APP_VERSION, programs: [], sessions: [], user: { name: '' }, recentAchievements: [] };
   },
 
   load() {
@@ -19,6 +21,13 @@ const AppData = {
       const data = JSON.parse(raw);
       if (!data.programs) data.programs = [];
       if (!data.sessions) data.sessions = [];
+      if (!data.version) data.version = APP_VERSION;
+      // Migrate: merge old separate recent achievements into main data
+      if (!data.recentAchievements) {
+        const old = localStorage.getItem('replift_recent_achievements');
+        data.recentAchievements = old ? JSON.parse(old) : [];
+        localStorage.removeItem('replift_recent_achievements');
+      }
       this._cache = data;
       return data;
     } catch (e) {
@@ -38,10 +47,12 @@ const AppData = {
   /** Invalidate cache — call after any external change (import, test data) */
   invalidateCache() {
     this._cache = null;
+    AppStats.clearMemo();
   },
 
   clear() {
     localStorage.removeItem(this.STORAGE_KEY);
+    localStorage.removeItem('replift_recent_achievements');
     this._cache = null;
   },
 
@@ -107,13 +118,42 @@ const AppData = {
       .filter(s => s.programId === programId)
       .sort((a, b) => new Date(b.date) - new Date(a.date));
     return sessions.length > 0 ? sessions[0] : null;
+  },
+
+  duplicateProgram(id) {
+    const original = this.getProgramById(id);
+    if (!original) return null;
+    const copy = {
+      nom: original.nom + ' (copie)',
+      exercices: JSON.parse(JSON.stringify(original.exercices || []))
+    };
+    return this.addProgram(copy);
+  },
+
+  deleteProgramWithSessions(id) {
+    const data = this.load();
+    data.programs = data.programs.filter(p => p.id !== id);
+    data.sessions = data.sessions.filter(s => s.programId !== id);
+    this.save(data);
   }
 };
 
 // ================================================================
-// STATS — Pure computation from AppData
+// STATS — Pure computation from AppData (with memoization)
 // ================================================================
 const AppStats = {
+  _memo: {},
+  
+  /** Clear memoized stats — called when data changes */
+  clearMemo() { this._memo = {}; },
+  
+  _cached(key, fn) {
+    if (this._memo[key] !== undefined) return this._memo[key];
+    const result = fn();
+    this._memo[key] = result;
+    return result;
+  },
+
   getTotalSessions() {
     return AppData.getSessions().length;
   },
@@ -190,27 +230,31 @@ const AppStats = {
 
   // === Volume & Performance ===
   getTotalVolume() {
-    let volume = 0;
-    AppData.getSessions().forEach(s => {
-      (s.exercices || []).forEach(ex => {
-        (ex.series || []).forEach(sr => {
-          volume += (Number(sr.poids) || 0) * (Number(sr.reps) || 0);
+    return this._cached('totalVolume', () => {
+      let volume = 0;
+      AppData.getSessions().forEach(s => {
+        (s.exercices || []).forEach(ex => {
+          (ex.series || []).forEach(sr => {
+            volume += (Number(sr.poids) || 0) * (Number(sr.reps) || 0);
+          });
         });
       });
+      return volume;
     });
-    return volume;
   },
 
   getTotalReps() {
-    let reps = 0;
-    AppData.getSessions().forEach(s => {
-      (s.exercices || []).forEach(ex => {
-        (ex.series || []).forEach(sr => {
-          reps += Number(sr.reps) || 0;
+    return this._cached('totalReps', () => {
+      let reps = 0;
+      AppData.getSessions().forEach(s => {
+        (s.exercices || []).forEach(ex => {
+          (ex.series || []).forEach(sr => {
+            reps += Number(sr.reps) || 0;
+          });
         });
       });
+      return reps;
     });
-    return reps;
   },
 
   getAverageVolumePerSession() {
@@ -229,21 +273,23 @@ const AppStats = {
   },
 
   getPersonalRecords() {
-    const records = {};
-    AppData.getSessions().forEach(s => {
-      (s.exercices || []).forEach(ex => {
-        if (!ex.nom) return;
-        const maxWeight = Math.max(0, ...(ex.series || []).map(sr => Number(sr.poids) || 0));
-        if (maxWeight > 0) {
-          if (!records[ex.nom] || maxWeight > records[ex.nom].weight) {
-            records[ex.nom] = { weight: maxWeight, date: s.date };
+    return this._cached('personalRecords', () => {
+      const records = {};
+      AppData.getSessions().forEach(s => {
+        (s.exercices || []).forEach(ex => {
+          if (!ex.nom) return;
+          const maxWeight = Math.max(0, ...(ex.series || []).map(sr => Number(sr.poids) || 0));
+          if (maxWeight > 0) {
+            if (!records[ex.nom] || maxWeight > records[ex.nom].weight) {
+              records[ex.nom] = { weight: maxWeight, date: s.date };
+            }
           }
-        }
+        });
       });
+      return Object.entries(records)
+        .sort(([, a], [, b]) => b.weight - a.weight)
+        .slice(0, 5);
     });
-    return Object.entries(records)
-      .sort(([, a], [, b]) => b.weight - a.weight)
-      .slice(0, 5);
   },
 
   getWeekStats() {
@@ -311,15 +357,95 @@ const AppStats = {
     const volume = this.getTotalVolume();
     const streak = this.getCurrentStreak();
     const exercises = this.getUniqueExercises();
+    const totalReps = this.getTotalReps();
+    const weeklyStreak = this.getWeeklyStreak();
+    const prs = this.getPersonalRecords().length;
 
     return [
-      { icon: '🎯', title: 'Première Séance', desc: 'Commencer le voyage', earned: sessions >= 1 },
-      { icon: '🔥', title: 'Streak 7 jours', desc: 'Une semaine complète', earned: streak >= 7 },
-      { icon: '💪', title: 'Volume Master', desc: '10 000 kg soulevés', earned: volume >= 10000 },
-      { icon: '🏆', title: 'Diversité', desc: '10 exercices différents', earned: exercises >= 10 },
-      { icon: '⚡', title: 'Marathon', desc: '50 séances complétées', earned: sessions >= 50 },
-      { icon: '🥇', title: 'Légende', desc: '100 000 kg soulevés', earned: volume >= 100000 }
+      // Débutant
+      { id: 'first', icon: '🎯', title: 'Première Séance', desc: 'Commencer le voyage', earned: sessions >= 1, req: '1 séance' },
+      { id: 'five', icon: '✋', title: 'Cinq de Plus', desc: '5 séances complétées', earned: sessions >= 5, req: '5 séances' },
+      { id: 'ten', icon: '🔟', title: 'Régulier', desc: '10 séances complétées', earned: sessions >= 10, req: '10 séances' },
+      // Volume
+      { id: 'vol5k', icon: '💪', title: 'Volume Rookie', desc: '5 000 kg soulevés', earned: volume >= 5000, req: '5 000 kg' },
+      { id: 'vol10k', icon: '🏋️', title: 'Volume Master', desc: '10 000 kg soulevés', earned: volume >= 10000, req: '10 000 kg' },
+      { id: 'vol50k', icon: '🔥', title: 'Machine de Guerre', desc: '50 000 kg soulevés', earned: volume >= 50000, req: '50 000 kg' },
+      { id: 'vol100k', icon: '🥇', title: 'Légende', desc: '100 000 kg soulevés', earned: volume >= 100000, req: '100 000 kg' },
+      // Streak & Régularité
+      { id: 'streak3', icon: '📅', title: 'Semaine Lancée', desc: 'Streak de 3 jours', earned: streak >= 3, req: '3 jours d\'affilée' },
+      { id: 'streak7', icon: '🔥', title: 'Streak 7 jours', desc: 'Une semaine complète', earned: streak >= 7, req: '7 jours d\'affilée' },
+      { id: 'wstreak4', icon: '📆', title: 'Mois Solide', desc: '4 semaines consécutives', earned: weeklyStreak >= 4, req: '4 sem. d\'affilée' },
+      { id: 'wstreak8', icon: '💎', title: 'Deux Mois Fort', desc: '8 semaines consécutives', earned: weeklyStreak >= 8, req: '8 sem. d\'affilée' },
+      // Diversité & Maîtrise
+      { id: 'div5', icon: '🎨', title: 'Curieux', desc: '5 exercices différents', earned: exercises >= 5, req: '5 exercices' },
+      { id: 'div10', icon: '🏆', title: 'Diversifié', desc: '10 exercices différents', earned: exercises >= 10, req: '10 exercices' },
+      { id: 'div15', icon: '🌟', title: 'Polyvalent', desc: '15 exercices maîtrisés', earned: exercises >= 15, req: '15 exercices' },
+      // Endurance
+      { id: 'marathon', icon: '⚡', title: 'Marathon', desc: '50 séances complétées', earned: sessions >= 50, req: '50 séances' },
+      { id: 'centurion', icon: '🏅', title: 'Centurion', desc: '100 séances complétées', earned: sessions >= 100, req: '100 séances' },
+      // Reps
+      { id: 'reps1k', icon: '🔢', title: 'Mille Reps', desc: '1 000 répétitions', earned: totalReps >= 1000, req: '1 000 reps' },
+      { id: 'reps5k', icon: '💯', title: 'Rep Machine', desc: '5 000 répétitions', earned: totalReps >= 5000, req: '5 000 reps' },
     ];
+  },
+
+  // === Profile Stats ===
+  getProfileSummary() {
+    const sessions = AppData.getSessions();
+    const totalSessions = sessions.length;
+    const totalVolume = this.getTotalVolume();
+    const totalPRs = this.getPersonalRecords().length;
+    const weeklyStreak = this.getWeeklyStreak();
+
+    // Days since first session
+    let activeDays = 0;
+    if (totalSessions > 0) {
+      const sorted = [...sessions].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const firstDate = new Date(sorted[0].date);
+      const now = new Date();
+      activeDays = Math.floor((now - firstDate) / (1000 * 60 * 60 * 24));
+    }
+
+    return { totalSessions, totalVolume, totalPRs, weeklyStreak, activeDays };
+  },
+
+  getProfileEvolution() {
+    const sessions = AppData.getSessions();
+    const now = new Date();
+
+    // Monthly volumes for last 12 months
+    const months = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const month = d.getMonth();
+      const year = d.getFullYear();
+
+      let volume = 0;
+      let count = 0;
+      sessions.forEach(s => {
+        const sd = new Date(s.date);
+        if (sd.getMonth() === month && sd.getFullYear() === year) {
+          count++;
+          (s.exercices || []).forEach(ex => {
+            (ex.series || []).forEach(sr => {
+              volume += (Number(sr.poids) || 0) * (Number(sr.reps) || 0);
+            });
+          });
+        }
+      });
+
+      months.push({ month, year, volume, count });
+    }
+
+    // Best month
+    const bestMonth = months.reduce((best, m) => m.volume > best.volume ? m : best, { volume: 0 });
+    // Average monthly volume (only months with activity)
+    const activeMonths = months.filter(m => m.volume > 0);
+    const avgMonthlyVolume = activeMonths.length > 0
+      ? Math.round(activeMonths.reduce((sum, m) => sum + m.volume, 0) / activeMonths.length)
+      : 0;
+
+    return { months, bestMonth, avgMonthlyVolume };
   },
 
   // === Évolution des exercices ===
@@ -414,6 +540,316 @@ const AppStats = {
         lastSession
       }
     };
+  },
+
+  // === Dashboard New Stats ===
+  getMonthlyVolume() {
+    const now = new Date();
+    let volume = 0;
+    AppData.getSessions().forEach(s => {
+      const d = new Date(s.date);
+      if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+        (s.exercices || []).forEach(ex => {
+          (ex.series || []).forEach(sr => {
+            volume += (Number(sr.poids) || 0) * (Number(sr.reps) || 0);
+          });
+        });
+      }
+    });
+    return volume;
+  },
+
+  get30DayProgression() {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+    let current30Volume = 0;
+    let previous30Volume = 0;
+
+    AppData.getSessions().forEach(s => {
+      const d = new Date(s.date);
+      let sessionVolume = 0;
+      (s.exercices || []).forEach(ex => {
+        (ex.series || []).forEach(sr => {
+          sessionVolume += (Number(sr.poids) || 0) * (Number(sr.reps) || 0);
+        });
+      });
+
+      if (d >= thirtyDaysAgo) {
+        current30Volume += sessionVolume;
+      } else if (d >= sixtyDaysAgo && d < thirtyDaysAgo) {
+        previous30Volume += sessionVolume;
+      }
+    });
+
+    if (previous30Volume === 0) return current30Volume > 0 ? '+100%' : '-';
+    const percent = Math.round(((current30Volume - previous30Volume) / previous30Volume) * 100);
+    return `${percent >= 0 ? '+' : ''}${percent}%`;
+  },
+
+  getPRsThisMonth() {
+    const now = new Date();
+    const records = {};
+    const newRecords = [];
+
+    // Build all-time records
+    AppData.getSessions().forEach(s => {
+      (s.exercices || []).forEach(ex => {
+        if (!ex.nom) return;
+        const maxWeight = Math.max(0, ...(ex.series || []).map(sr => Number(sr.poids) || 0));
+        if (maxWeight > 0) {
+          if (!records[ex.nom] || maxWeight > records[ex.nom].weight) {
+            records[ex.nom] = { weight: maxWeight, date: s.date };
+          }
+        }
+      });
+    });
+
+    // Count PRs set this month
+    Object.values(records).forEach(record => {
+      const d = new Date(record.date);
+      if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+        newRecords.push(record);
+      }
+    });
+
+    return newRecords.length;
+  },
+
+  getDaysSinceLastSession() {
+    const sessions = AppData.getSessions();
+    if (!sessions.length) return '-';
+    const sorted = [...sessions].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const lastDate = new Date(sorted[0].date);
+    const now = new Date();
+    const diffMs = now - lastDate;
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    return days === 0 ? "Aujourd'hui" : days === 1 ? '1 jour' : `${days} jours`;
+  },
+
+  getWeeklyStreak() {
+    return this._cached('weeklyStreak', () => {
+      const sessions = AppData.getSessions();
+      if (!sessions.length) return 0;
+
+      const weekMap = {};
+      sessions.forEach(s => {
+        const d = new Date(s.date);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(d.getFullYear(), d.getMonth(), diff);
+        monday.setHours(0, 0, 0, 0);
+        const weekKey = monday.getTime();
+        weekMap[weekKey] = (weekMap[weekKey] || 0) + 1;
+      });
+
+      const weeks = Object.keys(weekMap).map(Number).sort((a, b) => b - a);
+      if (!weeks.length) return 0;
+
+      const now = new Date();
+      const nowDay = now.getDay();
+      const nowDiff = now.getDate() - nowDay + (nowDay === 0 ? -6 : 1);
+      const nowMonday = new Date(now.getFullYear(), now.getMonth(), nowDiff);
+      nowMonday.setHours(0, 0, 0, 0);
+
+      let streak = 0;
+      let checkWeek = nowMonday.getTime();
+
+      while (weekMap[checkWeek]) {
+        streak++;
+        checkWeek -= 7 * 24 * 60 * 60 * 1000;
+      }
+
+      return streak;
+    });
+  },
+
+  getCalendarData(year, month) {
+    // Build volume map: dayKey → total volume (kg) for the given month
+    const volumeMap = {};
+    
+    AppData.getSessions().forEach(s => {
+      const d = new Date(s.date);
+      if (d.getMonth() !== month || d.getFullYear() !== year) return;
+      
+      const dayKey = d.getDate();
+      let sessionVolume = 0;
+      (s.exercices || []).forEach(ex => {
+        (ex.series || []).forEach(sr => {
+          sessionVolume += (Number(sr.poids) || 0) * (Number(sr.reps) || 0);
+        });
+      });
+      volumeMap[dayKey] = (volumeMap[dayKey] || 0) + sessionVolume;
+    });
+
+    // Build calendar grid
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    
+    // Monday = 0, ..., Sunday = 6 (ISO style)
+    let startOffset = firstDay.getDay() - 1;
+    if (startOffset < 0) startOffset = 6;
+
+    // Collect all non-zero volumes to compute percentile thresholds
+    const allVolumes = Object.values(volumeMap).filter(v => v > 0);
+    allVolumes.sort((a, b) => a - b);
+    
+    const p33 = allVolumes.length ? allVolumes[Math.floor(allVolumes.length * 0.33)] : 0;
+    const p66 = allVolumes.length ? allVolumes[Math.floor(allVolumes.length * 0.66)] : 0;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const days = [];
+    // Empty cells before the 1st
+    for (let i = 0; i < startOffset; i++) {
+      days.push({ empty: true });
+    }
+    // Actual days
+    for (let d = 1; d <= daysInMonth; d++) {
+      const volume = volumeMap[d] || 0;
+      const dateObj = new Date(year, month, d);
+      const isFuture = dateObj > today;
+      
+      let intensity = 'none';
+      if (isFuture) {
+        intensity = 'future';
+      } else if (volume > 0) {
+        if (volume <= p33) intensity = 'low';
+        else if (volume <= p66) intensity = 'medium';
+        else intensity = 'high';
+      }
+      
+      days.push({
+        day: d,
+        volume,
+        intensity,
+        isFuture,
+        isToday: dateObj.getTime() === today.getTime()
+      });
+    }
+    
+    // Monthly total
+    const totalVolume = Object.values(volumeMap).reduce((a, b) => a + b, 0);
+    const sessionCount = new Set(
+      AppData.getSessions()
+        .filter(s => {
+          const d = new Date(s.date);
+          return d.getMonth() === month && d.getFullYear() === year;
+        })
+        .map(s => new Date(s.date).getDate())
+    ).size;
+
+    return { days, totalVolume, sessionCount, year, month };
+  },
+
+  // === Strategic Metrics ===
+  getAverageIntensity() {
+    let totalWeightedReps = 0;
+    let totalReps = 0;
+    
+    AppData.getSessions().forEach(s => {
+      (s.exercices || []).forEach(ex => {
+        (ex.series || []).forEach(sr => {
+          const poids = Number(sr.poids) || 0;
+          const reps = Number(sr.reps) || 0;
+          totalWeightedReps += poids * reps;
+          totalReps += reps;
+        });
+      });
+    });
+    
+    return totalReps > 0 ? Math.round(totalWeightedReps / totalReps) : 0;
+  },
+
+  getMuscleBalance() {
+    const pushExercises = ['développé couché', 'développé incliné', 'dips', 'pompes', 'développé militaire', 'développé haltère', 'bench press', 'bench', 'overhead press', 'ohp', 'push up', 'push-up', 'élévations latérales', 'latérales', 'extensions triceps', 'triceps', 'skull crusher', 'pec fly', 'pec deck', 'écartés', 'fly', 'military press', 'press épaules', 'shoulder press'];
+    const pullExercises = ['tractions', 'rowing', 'tirage horizontal', 'tirage vertical', 'curl', 'pull up', 'pull-up', 'chin up', 'deadlift', 'face pull', 'facepull', 'lat pulldown', 'poulie haute', 'poulie basse', 'shrug', 'soulevé de terre', 'row', 'barbell row', 'dumbbell row', 'biceps', 'hammer curl', 'tirage', 'pull'];
+    
+    let pushCount = 0;
+    let pullCount = 0;
+    
+    AppData.getSessions().forEach(s => {
+      (s.exercices || []).forEach(ex => {
+        const exerciseName = (ex.nom || '').toLowerCase();
+        if (pushExercises.some(pe => exerciseName.includes(pe))) {
+          pushCount += (ex.series || []).length;
+        } else if (pullExercises.some(pe => exerciseName.includes(pe))) {
+          pullCount += (ex.series || []).length;
+        }
+      });
+    });
+    
+    const total = pushCount + pullCount;
+    if (total === 0) return 'Équilibré';
+    
+    const pushRatio = Math.round((pushCount / total) * 100);
+    if (pushRatio >= 60) return 'Push dominant';
+    if (pushRatio <= 40) return 'Pull dominant';
+    return 'Équilibré';
+  },
+
+  getProgressionRate() {
+    // Calculate average monthly progression rate across all exercises with PRs
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    
+    const exerciseProgress = {};
+    
+    AppData.getSessions()
+      .filter(s => new Date(s.date) >= threeMonthsAgo)
+      .forEach(s => {
+        const sessionDate = new Date(s.date);
+        (s.exercices || []).forEach(ex => {
+          if (!ex.nom) return;
+          const maxWeight = Math.max(0, ...(ex.series || []).map(sr => Number(sr.poids) || 0));
+          if (maxWeight > 0) {
+            if (!exerciseProgress[ex.nom]) {
+              exerciseProgress[ex.nom] = [];
+            }
+            exerciseProgress[ex.nom].push({ date: sessionDate, weight: maxWeight });
+          }
+        });
+      });
+    
+    let totalProgressRates = [];
+    Object.values(exerciseProgress).forEach(sessions => {
+      if (sessions.length >= 2) {
+        sessions.sort((a, b) => a.date - b.date);
+        const first = sessions[0];
+        const last = sessions[sessions.length - 1];
+        const monthsDiff = (last.date - first.date) / (1000 * 60 * 60 * 24 * 30);
+        if (monthsDiff > 0) {
+          const monthlyRate = ((last.weight - first.weight) / first.weight) * 100 / monthsDiff;
+          totalProgressRates.push(monthlyRate);
+        }
+      }
+    });
+    
+    if (totalProgressRates.length === 0) return 0;
+    const avgRate = totalProgressRates.reduce((a, b) => a + b, 0) / totalProgressRates.length;
+    return Math.round(avgRate);
+  },
+
+  getRecentAchievements() {
+    const current = this.getAchievements();
+    const earned = current.filter(a => a.earned);
+    
+    const data = AppData.load();
+    let stored = data.recentAchievements || [];
+    
+    const storedIds = stored.map(a => a.id || a.title);
+    const newAchievements = earned.filter(a => !storedIds.includes(a.id || a.title));
+    
+    if (newAchievements.length > 0) {
+      stored = [...newAchievements, ...stored].slice(0, 3);
+      data.recentAchievements = stored;
+      AppData.save(data);
+    }
+    
+    return stored;
   }
 };
 
@@ -427,6 +863,9 @@ const AppUI = {
   currentChartExercise: null,
   currentChartPeriod: '30d',
   exerciseCounter: 0,
+
+  // Current calendar month offset (0 = current month, -1 = last month, etc.)
+  calendarOffset: 0,
 
   // --- Helpers ---
   /** HTML-escape a string (prevents XSS in text content) */
@@ -444,6 +883,114 @@ const AppUI = {
       .replace(/"/g, '&quot;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
+  },
+
+  /** Safe DOM accessor — returns element or a no-op stub */
+  $(id) {
+    return document.getElementById(id) || { textContent: '', innerHTML: '', style: {}, classList: { add(){}, remove(){}, toggle(){}, contains(){ return false; } }, setAttribute(){}, addEventListener(){} };
+  },
+
+  // --- Toast ---
+  showToast(msg, duration) {
+    duration = duration || 3000;
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = msg;
+    container.appendChild(toast);
+    requestAnimationFrame(function() { toast.classList.add('show'); });
+    setTimeout(function() {
+      toast.classList.remove('show');
+      setTimeout(function() { toast.remove(); }, 300);
+    }, duration);
+  },
+
+  // --- Session Timer ---
+  _sessionTimerInterval: null,
+  _sessionTimerStart: null,
+
+  startSessionTimer() {
+    this.stopSessionTimer();
+    this._sessionTimerStart = Date.now();
+    var self = this;
+    var el = document.getElementById('session-timer-value');
+    if (!el) return;
+    el.textContent = '00:00';
+    this._sessionTimerInterval = setInterval(function() {
+      var elapsed = Math.floor((Date.now() - self._sessionTimerStart) / 1000);
+      var m = Math.floor(elapsed / 60).toString().padStart(2, '0');
+      var s = (elapsed % 60).toString().padStart(2, '0');
+      el.textContent = m + ':' + s;
+    }, 1000);
+  },
+
+  stopSessionTimer() {
+    if (this._sessionTimerInterval) {
+      clearInterval(this._sessionTimerInterval);
+      this._sessionTimerInterval = null;
+    }
+    var el = document.getElementById('session-timer-value');
+    if (el) el.textContent = '00:00';
+  },
+
+  // --- Greeting ---
+  updateGreeting() {
+    var data = AppData.load();
+    var name = (data.user && data.user.name) ? data.user.name : '';
+    var hour = new Date().getHours();
+    var greeting;
+    if (hour < 12) greeting = 'Bonjour';
+    else if (hour < 18) greeting = 'Bon après-midi';
+    else greeting = 'Bonsoir';
+    var el = document.getElementById('header-greeting');
+    if (el) el.textContent = name ? greeting + ', ' + name : greeting;
+  },
+
+  // --- Historique offset ---
+  historiqueOffset: 0,
+
+  navigateHistorique(direction) {
+    this.historiqueOffset += direction;
+    this.updateHistorique();
+  },
+
+  // --- Swipe-to-close overlays ---
+  setupSwipeToClose() {
+    var overlays = document.querySelectorAll('.overlay');
+    overlays.forEach(function(overlay) {
+      var startY = 0;
+      var currentY = 0;
+      var dragging = false;
+      var content = overlay.querySelector('.overlay-content') || overlay;
+
+      content.addEventListener('touchstart', function(e) {
+        if (content.scrollTop > 0) return;
+        startY = e.touches[0].clientY;
+        dragging = true;
+      }, { passive: true });
+
+      content.addEventListener('touchmove', function(e) {
+        if (!dragging) return;
+        currentY = e.touches[0].clientY;
+        var diff = currentY - startY;
+        if (diff > 0) {
+          content.style.transform = 'translateY(' + diff + 'px)';
+          content.style.transition = 'none';
+        }
+      }, { passive: true });
+
+      content.addEventListener('touchend', function() {
+        if (!dragging) return;
+        dragging = false;
+        var diff = currentY - startY;
+        content.style.transition = 'transform .3s ease';
+        if (diff > 120) {
+          overlay.classList.remove('active');
+        }
+        content.style.transform = '';
+      });
+    });
   },
 
   // --- Navigation ---
@@ -465,6 +1012,7 @@ const AppUI = {
     if (pageName === 'dashboard') this.updateDashboard();
     else if (pageName === 'seance') { this.updatePrograms(); this.updateHistorique(); }
     else if (pageName === 'stats') this.updateStats();
+    else if (pageName === 'profil') this.updateProfile();
   },
 
   // --- Onglets Séance ---
@@ -482,12 +1030,111 @@ const AppUI = {
 
   // --- Dashboard ---
   updateDashboard() {
-    document.getElementById('stat-total').textContent = AppStats.getTotalSessions();
     document.getElementById('stat-month').textContent = AppStats.getSessionsThisMonth();
-    document.getElementById('stat-streak').textContent = AppStats.getCurrentStreak();
-    document.getElementById('stat-maxweight').textContent = AppStats.getMaxWeight();
-    document.getElementById('stat-bestexo').textContent = AppStats.getBestExercise();
-    document.getElementById('stat-last').textContent = AppStats.getLastSession();
+    
+    const volumeMonth = AppStats.getMonthlyVolume();
+    document.getElementById('stat-volume-month').textContent = 
+      volumeMonth > 0 ? `${volumeMonth.toLocaleString('fr-FR')} kg` : '0 kg';
+    
+    document.getElementById('stat-progression').textContent = AppStats.get30DayProgression();
+    document.getElementById('stat-prs-month').textContent = AppStats.getPRsThisMonth();
+    document.getElementById('stat-last-session').textContent = AppStats.getDaysSinceLastSession();
+    
+    const weeklyStreak = AppStats.getWeeklyStreak();
+    document.getElementById('stat-weekly-streak').textContent = 
+      weeklyStreak === 0 ? '0' : weeklyStreak === 1 ? '1 sem.' : `${weeklyStreak} sem.`;
+    
+    // Render heatmap
+    this.renderCalendar();
+  },
+
+  navigateCalendar(direction) {
+    this.calendarOffset += direction;
+    // Clamp: don't go into the future
+    if (this.calendarOffset > 0) this.calendarOffset = 0;
+    // Clamp: max 12 months back
+    if (this.calendarOffset < -11) this.calendarOffset = -11;
+    this.renderCalendar();
+  },
+
+  renderCalendar() {
+    const container = document.getElementById('heatmap-container');
+    
+    const now = new Date();
+    const targetDate = new Date(now.getFullYear(), now.getMonth() + this.calendarOffset, 1);
+    const year = targetDate.getFullYear();
+    const month = targetDate.getMonth();
+    
+    const data = AppStats.getCalendarData(year, month);
+    
+    const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                         'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    const dayHeaders = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+    
+    let html = '<div class="cal-widget">';
+    
+    // Header: nav + month name
+    html += '<div class="cal-header">';
+    html += `<button class="cal-nav" onclick="AppUI.navigateCalendar(-1)" aria-label="Mois précédent">‹</button>`;
+    html += `<span class="cal-title">${monthNames[month]} ${year}</span>`;
+    const isCurrentMonth = this.calendarOffset === 0;
+    html += `<button class="cal-nav${isCurrentMonth ? ' disabled' : ''}" onclick="AppUI.navigateCalendar(1)" ${isCurrentMonth ? 'disabled' : ''} aria-label="Mois suivant">›</button>`;
+    html += '</div>';
+    
+    // Day-of-week headers
+    html += '<div class="cal-grid">';
+    dayHeaders.forEach(d => {
+      html += `<div class="cal-day-header">${d}</div>`;
+    });
+    
+    // Day cells
+    data.days.forEach(d => {
+      if (d.empty) {
+        html += '<div class="cal-cell empty"></div>';
+        return;
+      }
+      
+      const todayClass = d.isToday ? ' today' : '';
+      const volumeLabel = d.volume > 0 
+        ? (d.volume >= 1000 ? `${(d.volume / 1000).toFixed(1)}t` : `${d.volume}kg`)
+        : '';
+      const tooltip = d.isFuture ? '' : (d.volume > 0 
+        ? `${d.day} — ${d.volume.toLocaleString('fr-FR')} kg soulevés` 
+        : `${d.day} — Repos`);
+      
+      html += `<div class="cal-cell ${d.intensity}${todayClass}" title="${tooltip}">`;
+      html += `<span class="cal-day-num">${d.day}</span>`;
+      if (volumeLabel && !d.isFuture) {
+        html += `<span class="cal-day-vol">${volumeLabel}</span>`;
+      }
+      html += '</div>';
+    });
+    
+    html += '</div>'; // cal-grid
+    
+    // Footer stats
+    html += '<div class="cal-footer">';
+    html += `<span class="cal-stat">${data.sessionCount} séance${data.sessionCount > 1 ? 's' : ''}</span>`;
+    html += '<span class="cal-stat-sep">·</span>';
+    const volDisplay = data.totalVolume >= 1000 
+      ? `${(data.totalVolume / 1000).toFixed(1)} tonnes soulevées`
+      : `${data.totalVolume.toLocaleString('fr-FR')} kg soulevés`;
+    html += `<span class="cal-stat">${data.totalVolume > 0 ? volDisplay : 'Aucun volume'}</span>`;
+    html += '</div>';
+    
+    // Legend
+    html += '<div class="cal-legend">';
+    html += '<span class="cal-legend-label">Volume faible</span>';
+    html += '<div class="cal-legend-cell none"></div>';
+    html += '<div class="cal-legend-cell low"></div>';
+    html += '<div class="cal-legend-cell medium"></div>';
+    html += '<div class="cal-legend-cell high"></div>';
+    html += '<span class="cal-legend-label">Volume élevé</span>';
+    html += '</div>';
+    
+    html += '</div>'; // cal-widget
+    
+    container.innerHTML = html;
   },
 
   // --- Programmes ---
@@ -528,6 +1175,10 @@ const AppUI = {
     document.getElementById('program-name').value = '';
     document.getElementById('program-exercises').innerHTML = '';
     document.getElementById('btn-delete-program').style.display = 'none';
+    var dupBtn = document.getElementById('btn-duplicate-program');
+    if (dupBtn) dupBtn.style.display = 'none';
+    var delSessBtn = document.getElementById('btn-delete-program-sessions');
+    if (delSessBtn) delSessBtn.style.display = 'none';
     this.exerciseCounter = 0;
     this.addExerciseToForm();
     this.openOverlay('overlay-create-program');
@@ -541,6 +1192,10 @@ const AppUI = {
     document.getElementById('program-name').value = program.nom || '';
     document.getElementById('program-exercises').innerHTML = '';
     document.getElementById('btn-delete-program').style.display = 'block';
+    var dupBtn = document.getElementById('btn-duplicate-program');
+    if (dupBtn) dupBtn.style.display = 'block';
+    var delSessBtn = document.getElementById('btn-delete-program-sessions');
+    if (delSessBtn) delSessBtn.style.display = 'block';
     this.exerciseCounter = 0;
     if (program.exercices && program.exercices.length > 0) {
       program.exercices.forEach(ex => this.addExerciseToForm(ex));
@@ -548,6 +1203,29 @@ const AppUI = {
       this.addExerciseToForm();
     }
     this.openOverlay('overlay-create-program');
+  },
+
+  duplicateCurrentProgram() {
+    if (!this.currentEditProgramId) return;
+    const copy = AppData.duplicateProgram(this.currentEditProgramId);
+    if (copy) {
+      this.closeOverlay('overlay-create-program');
+      this.updatePrograms();
+      this.showToast('Programme dupliqué');
+    }
+  },
+
+  deleteCurrentProgramWithSessions() {
+    if (!this.currentEditProgramId) return;
+    const sessCount = AppData.getSessions().filter(s => s.programId === this.currentEditProgramId).length;
+    if (confirm('Supprimer ce programme ET ses ' + sessCount + ' séance(s) ?')) {
+      AppData.deleteProgramWithSessions(this.currentEditProgramId);
+      this.closeOverlay('overlay-create-program');
+      this.updatePrograms();
+      this.updateHistorique();
+      this.updateDashboard();
+      this.showToast('Programme et séances supprimés');
+    }
   },
 
   addExerciseToForm(data) {
@@ -594,7 +1272,7 @@ const AppUI = {
 
   saveProgram() {
     const nom = document.getElementById('program-name').value.trim();
-    if (!nom) { alert('Donne un nom au programme'); return; }
+    if (!nom) { this.showToast('Donne un nom au programme'); return; }
 
     const blocks = document.querySelectorAll('.exercise-block');
     const exercices = [];
@@ -633,6 +1311,7 @@ const AppUI = {
 
   // --- Démarrer session (bouton +) ---
   openStartSession() {
+    if (navigator.vibrate) navigator.vibrate(10);
     const programs = AppData.getPrograms();
     const container = document.getElementById('program-select-list');
     if (!programs.length) {
@@ -711,6 +1390,7 @@ const AppUI = {
     });
 
     this.openOverlay('overlay-active-session');
+    this.startSessionTimer();
   },
 
   addActiveSeriesRow(btn) {
@@ -738,16 +1418,16 @@ const AppUI = {
       block.querySelectorAll('.series-row').forEach(row => {
         const poidsInput = row.querySelector('[data-type="poids"]');
         const repsInput = row.querySelector('[data-type="reps"]');
-        const poids = poidsInput.value || poidsInput.placeholder;
-        const reps = repsInput.value || repsInput.placeholder;
-        if (poids && reps && poids !== 'kg' && reps !== 'reps') {
+        const poids = poidsInput.value;
+        const reps = repsInput.value;
+        if (poids && reps) {
           series.push({ poids: Number(poids), reps: Number(reps) });
         }
       });
       if (series.length > 0) exercices.push({ nom, series });
     });
 
-    if (!exercices.length) { alert('Aucune donnée à sauvegarder'); return; }
+    if (!exercices.length) { this.showToast('Aucune donnée à sauvegarder'); return; }
 
     const program = AppData.getProgramById(this.currentSessionProgramId);
     AppData.addSession({
@@ -756,17 +1436,20 @@ const AppUI = {
       exercices
     });
 
+    this.stopSessionTimer();
     this.closeOverlay('overlay-active-session');
     this.updateDashboard();
     this.updateHistorique();
     if (document.getElementById('stats').classList.contains('active')) {
       this.updateStats();
     }
-    alert('Séance sauvegardée !');
+    this.updateProfile();
+    this.showToast('Séance sauvegardée !');
   },
 
   confirmCloseSession() {
     if (confirm('Abandonner la séance en cours ?')) {
+      this.stopSessionTimer();
       this.closeOverlay('overlay-active-session');
     }
   },
@@ -784,13 +1467,38 @@ const AppUI = {
         '</div>';
       return;
     }
-    container.innerHTML = sessions.map(s => {
+
+    // Group by month
+    const groups = {};
+    sessions.forEach(s => {
+      const d = new Date(s.date);
+      const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(s);
+    });
+
+    const months = Object.keys(groups).sort().reverse();
+    const idx = Math.max(0, Math.min(this.historiqueOffset, months.length - 1));
+    this.historiqueOffset = idx;
+    const currentMonth = months[idx];
+    const currentSessions = groups[currentMonth];
+
+    const d = new Date(currentMonth + '-01');
+    const monthLabel = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+    let html = '<div class="historique-nav">';
+    html += '<button class="cal-nav' + (idx >= months.length - 1 ? ' disabled' : '') + '" onclick="AppUI.navigateHistorique(1)"' + (idx >= months.length - 1 ? ' disabled' : '') + '>‹</button>';
+    html += '<span class="historique-month-header">' + monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1) + '</span>';
+    html += '<button class="cal-nav' + (idx <= 0 ? ' disabled' : '') + '" onclick="AppUI.navigateHistorique(-1)"' + (idx <= 0 ? ' disabled' : '') + '>›</button>';
+    html += '</div>';
+
+    currentSessions.forEach(s => {
       const date = new Date(s.date);
       const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
       const exCount = (s.exercices || []).length;
       let totalSeries = 0;
       (s.exercices || []).forEach(ex => { totalSeries += (ex.series || []).length; });
-      return (
+      html +=
         '<div class="session-item" onclick="AppUI.viewSession(\'' + this.escAttr(s.id) + '\')">' +
           '<div class="session-item-header">' +
             '<div class="session-item-date">' + dateStr + '</div>' +
@@ -800,9 +1508,10 @@ const AppUI = {
             '<span class="session-item-stat">' + exCount + ' exercice(s)</span>' +
             '<span class="session-item-stat">' + totalSeries + ' série(s)</span>' +
           '</div>' +
-        '</div>'
-      );
-    }).join('');
+        '</div>';
+    });
+
+    container.innerHTML = html;
   },
 
   // --- Détail session ---
@@ -843,10 +1552,17 @@ const AppUI = {
 
   // --- Stats ---
   updateStats() {
+    // Strategic Metrics
     document.getElementById('stat-total-volume').textContent = AppStats.getTotalVolume().toLocaleString('fr-FR') + ' kg';
-    document.getElementById('stat-total-reps').textContent = AppStats.getTotalReps().toLocaleString('fr-FR');
-    document.getElementById('stat-avg-volume').textContent = AppStats.getAverageVolumePerSession().toLocaleString('fr-FR') + ' kg';
-    document.getElementById('stat-unique-exercises').textContent = AppStats.getUniqueExercises();
+    
+    const avgIntensity = AppStats.getAverageIntensity();
+    document.getElementById('stat-avg-intensity').textContent = avgIntensity > 0 ? avgIntensity + ' kg/rep' : '-';
+    
+    document.getElementById('stat-muscle-balance').textContent = AppStats.getMuscleBalance();
+    
+    const progressionRate = AppStats.getProgressionRate();
+    document.getElementById('stat-progression-rate').textContent = progressionRate === 0 ? '-' : 
+      (progressionRate > 0 ? '+' : '') + progressionRate + '%/mois';
 
     // Records personnels
     const records = AppStats.getPersonalRecords();
@@ -881,22 +1597,6 @@ const AppUI = {
     monthChangeEl.textContent = monthChangeStr + '% vs mois dernier';
     monthChangeEl.className = 'comparison-change ' + (monthStats.changePercent > 0 ? 'positive' : monthStats.changePercent < 0 ? 'negative' : '');
 
-    // Exercices favoris
-    const favorites = AppStats.getFavoriteExercises();
-    let favoritesHTML = '';
-    if (favorites.length === 0) {
-      favoritesHTML = '<div class="empty-state"><p>Aucun exercice pour le moment</p></div>';
-    } else {
-      favorites.forEach(([exercise, count]) => {
-        favoritesHTML +=
-          '<div class="favorite-item">' +
-            '<span class="favorite-name">' + this.esc(exercise) + '</span>' +
-            '<span class="favorite-count">' + count + ' fois</span>' +
-          '</div>';
-      });
-    }
-    document.getElementById('favorite-exercises').innerHTML = favoritesHTML;
-
     // Évolution par exercice
     const evolutionExercises = AppStats.getExercisesForEvolution();
     let evolutionHTML = '';
@@ -929,23 +1629,32 @@ const AppUI = {
                 '<span class="evolution-stat-value">' + ex.bestWeight + 'kg</span>' +
               '</div>' +
             '</div>' +
+            '<div class="evolution-item-hint">Tap pour voir le graphique</div>' +
           '</div>';
       });
     }
     document.getElementById('exercise-evolution').innerHTML = evolutionHTML;
 
-    // Achievements
-    const achievements = AppStats.getAchievements();
-    let badgesHTML = '';
-    achievements.forEach(badge => {
-      badgesHTML +=
-        '<div class="badge ' + (badge.earned ? 'earned' : '') + '">' +
-          '<div class="badge-icon">' + badge.icon + '</div>' +
-          '<div class="badge-title">' + badge.title + '</div>' +
-          '<div class="badge-desc">' + badge.desc + '</div>' +
-        '</div>';
-    });
-    document.getElementById('achievements').innerHTML = badgesHTML;
+    // Recent Achievements (show only if there are any)
+    const recentAchievements = AppStats.getRecentAchievements();
+    const recentSection = document.getElementById('recent-achievements-section');
+    const recentContainer = document.getElementById('recent-achievements');
+    
+    if (recentAchievements.length > 0) {
+      recentSection.style.display = 'block';
+      let recentHTML = '';
+      recentAchievements.forEach(achievement => {
+        recentHTML +=
+          '<div class="badge earned recent">' +
+            '<div class="badge-icon">' + achievement.icon + '</div>' +
+            '<div class="badge-title">' + achievement.title + '</div>' +
+            '<div class="badge-desc">' + achievement.desc + '</div>' +
+          '</div>';
+      });
+      recentContainer.innerHTML = recentHTML;
+    } else {
+      recentSection.style.display = 'none';
+    }
   },
 
   // --- Graphiques d'évolution ---
@@ -960,8 +1669,13 @@ const AppUI = {
       btn.classList.toggle('active', btn.dataset.period === '30d');
     });
 
-    this.updateExerciseChart();
+    // Open overlay first, then render chart to ensure proper dimensions
     this.openOverlay('overlay-exercise-chart');
+    
+    // Small delay to let the overlay fully display before measuring canvas dimensions
+    setTimeout(() => {
+      this.updateExerciseChart();
+    }, 50);
   },
 
   switchChartPeriod(evt, period) {
@@ -994,11 +1708,18 @@ const AppUI = {
     const canvas = document.getElementById('exercise-chart');
     const ctx = canvas.getContext('2d');
 
-    // Responsive canvas
+    // Responsive canvas with safety checks
     const containerEl = canvas.parentElement;
     const dpr = window.devicePixelRatio || 1;
-    const displayWidth = containerEl.clientWidth - 40;
+    
+    // Ensure container has proper dimensions
+    let displayWidth = containerEl.clientWidth - 40;
     const displayHeight = 300;
+    
+    // Fallback if container is not properly sized yet
+    if (displayWidth <= 0) {
+      displayWidth = 400; // Default fallback width
+    }
 
     canvas.width = displayWidth * dpr;
     canvas.height = displayHeight * dpr;
@@ -1119,6 +1840,38 @@ const AppUI = {
         ctx.restore();
       }
     });
+
+    // Touch & mouse tooltip
+    const tooltip = document.getElementById('chart-tooltip');
+    if (tooltip) {
+      var self = this;
+      var findNearest = function(clientX, clientY) {
+        var rect = canvas.getBoundingClientRect();
+        var mx = (clientX - rect.left) * (displayWidth / rect.width);
+        var nearest = null;
+        var minDist = Infinity;
+        sessions.forEach(function(s, i) {
+          var dx = Math.abs(getX(i) - mx);
+          if (dx < minDist) { minDist = dx; nearest = { s: s, x: getX(i), y: getY(s.weight), i: i }; }
+        });
+        return nearest;
+      };
+      var showTip = function(clientX, clientY) {
+        var hit = findNearest(clientX, clientY);
+        if (!hit || !hit.s) { tooltip.classList.remove('show'); return; }
+        var date = new Date(hit.s.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+        tooltip.textContent = hit.s.weight + ' kg — ' + date + (hit.s.reps ? ' (' + hit.s.reps + ' reps)' : '');
+        var rect = canvas.getBoundingClientRect();
+        tooltip.style.left = (rect.left + hit.x * (rect.width / displayWidth)) + 'px';
+        tooltip.style.top = (rect.top + hit.y * (rect.height / displayHeight) - 40) + 'px';
+        tooltip.classList.add('show');
+      };
+      canvas.addEventListener('touchstart', function(e) { showTip(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+      canvas.addEventListener('touchmove', function(e) { showTip(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+      canvas.addEventListener('touchend', function() { tooltip.classList.remove('show'); });
+      canvas.addEventListener('mousemove', function(e) { showTip(e.clientX, e.clientY); });
+      canvas.addEventListener('mouseleave', function() { tooltip.classList.remove('show'); });
+    }
   },
 
   // --- Overlays ---
@@ -1127,6 +1880,176 @@ const AppUI = {
   },
   closeOverlay(id) {
     document.getElementById(id).classList.remove('active');
+  },
+
+  // --- Profile ---
+  updateProfile() {
+    const summary = AppStats.getProfileSummary();
+    const achievements = AppStats.getAchievements();
+    const earned = achievements.filter(a => a.earned);
+    const evolution = AppStats.getProfileEvolution();
+
+    // Load saved user data
+    const data = AppData.load();
+    const user = data.user || {};
+    if (user.emoji) document.getElementById('profile-avatar').textContent = user.emoji;
+    if (user.name) document.getElementById('profile-name').textContent = user.name;
+
+    // Rank indicator based on earned achievements
+    const rankEl = document.getElementById('profile-rank');
+    if (rankEl) {
+      const count = earned.length;
+      let rank;
+      if (count >= 15) rank = '🏆 Légende';
+      else if (count >= 10) rank = '💎 Élite';
+      else if (count >= 7) rank = '🔥 Expert';
+      else if (count >= 4) rank = '⚡ Confirmé';
+      else if (count >= 1) rank = '🌱 Débutant';
+      else rank = '🆕 Rookie';
+      rankEl.textContent = rank;
+    }
+
+    // Tagline: use saved bio if available, otherwise auto-generate
+    const tagline = document.getElementById('profile-tagline');
+    if (user.bio) {
+      tagline.textContent = user.bio;
+    } else if (summary.totalSessions === 0) tagline.textContent = 'Prêt à en découdre';
+    else if (summary.totalSessions < 10) tagline.textContent = 'Le début d\'une belle aventure';
+    else if (summary.totalSessions < 50) tagline.textContent = 'En route vers la progression';
+    else if (summary.totalSessions < 100) tagline.textContent = 'Athlète confirmé';
+    else tagline.textContent = 'Légende vivante';
+
+    // Summary stats
+    document.getElementById('prof-sessions').textContent = summary.totalSessions;
+    const volDisplay = summary.totalVolume >= 1000
+      ? (summary.totalVolume / 1000).toFixed(1) + 't'
+      : summary.totalVolume + 'kg';
+    document.getElementById('prof-volume').textContent = volDisplay;
+    document.getElementById('prof-streak').textContent = summary.weeklyStreak;
+    document.getElementById('prof-prs').textContent = summary.totalPRs;
+
+    // Achievements count
+    document.getElementById('achievements-count').textContent = earned.length + '/' + achievements.length;
+
+    // Achievements preview (last 4 earned, or first 4 locked)
+    const previewContainer = document.getElementById('profile-achievements-preview');
+    let previewHTML = '';
+
+    if (earned.length > 0) {
+      // Show most recent earned (reversed to show latest first)
+      const recent = [...earned].reverse().slice(0, 4);
+      recent.forEach(a => {
+        previewHTML +=
+          '<div class="achievement-mini earned">' +
+            '<div class="achievement-mini-icon">' + a.icon + '</div>' +
+            '<div class="achievement-mini-title">' + a.title + '</div>' +
+          '</div>';
+      });
+    } else {
+      // Show first 4 locked
+      achievements.slice(0, 4).forEach(a => {
+        previewHTML +=
+          '<div class="achievement-mini locked">' +
+            '<div class="achievement-mini-icon">🔒</div>' +
+            '<div class="achievement-mini-title">' + a.title + '</div>' +
+          '</div>';
+      });
+    }
+    previewContainer.innerHTML = previewHTML;
+
+    // Evolution stats
+    const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+    const evoContainer = document.getElementById('profile-evolution');
+
+    const bestMonthName = evolution.bestMonth.volume > 0
+      ? monthNames[evolution.bestMonth.month] + ' (' + (evolution.bestMonth.volume / 1000).toFixed(1) + 't)'
+      : '-';
+    const avgDisplay = evolution.avgMonthlyVolume >= 1000
+      ? (evolution.avgMonthlyVolume / 1000).toFixed(1) + 't'
+      : evolution.avgMonthlyVolume + ' kg';
+
+    let evoHTML = '<div class="profile-evo-stats">';
+    evoHTML += '<div class="profile-evo-stat"><span class="profile-evo-label">Meilleur mois</span><span class="profile-evo-value">' + bestMonthName + '</span></div>';
+    evoHTML += '<div class="profile-evo-stat"><span class="profile-evo-label">Moyenne mensuelle</span><span class="profile-evo-value">' + avgDisplay + '</span></div>';
+    evoHTML += '<div class="profile-evo-stat"><span class="profile-evo-label">Membre depuis</span><span class="profile-evo-value">' + (summary.activeDays > 0 ? summary.activeDays + ' jours' : '-') + '</span></div>';
+    evoHTML += '</div>';
+
+    evoContainer.innerHTML = evoHTML;
+  },
+
+  openAllAchievements() {
+    const achievements = AppStats.getAchievements();
+    const earned = achievements.filter(a => a.earned);
+
+    // Progress bar
+    const percent = Math.round((earned.length / achievements.length) * 100);
+    document.getElementById('achievements-progress-fill').style.width = percent + '%';
+    document.getElementById('achievements-progress-text').textContent =
+      earned.length + '/' + achievements.length + ' débloqués (' + percent + '%)';
+
+    // List
+    let html = '';
+    achievements.forEach(a => {
+      const isEarned = a.earned;
+      html +=
+        '<div class="achievement-full ' + (isEarned ? 'earned' : 'locked') + '">' +
+          '<div class="achievement-full-icon">' + (isEarned ? a.icon : '🔒') + '</div>' +
+          '<div class="achievement-full-info">' +
+            '<div class="achievement-full-title">' + a.title + '</div>' +
+            '<div class="achievement-full-desc">' + a.desc + '</div>' +
+            (isEarned
+              ? '<div class="achievement-full-status earned">✅ Débloqué</div>'
+              : '<div class="achievement-full-status locked">Objectif : ' + a.req + '</div>'
+            ) +
+          '</div>' +
+        '</div>';
+    });
+
+    document.getElementById('all-achievements-list').innerHTML = html;
+    this.openOverlay('overlay-all-achievements');
+  },
+
+  openEditProfile() {
+    const data = AppData.load();
+    const user = data.user || {};
+    document.getElementById('edit-profile-name').value = user.name || '';
+    document.getElementById('edit-profile-bio').value = user.bio || '';
+    const currentEmoji = user.emoji || '🏋️';
+    document.getElementById('edit-profile-emoji-preview').textContent = currentEmoji;
+
+    // Populate emoji grid
+    const emojis = ['🏋️','💪','🔥','⚡','🏆','🎯','🦾','🐺','🦁','🐻','🦅','🚀','💎','👊','🥊','🏅','⭐','🌟','🎖️','🧠','🫀','🦿','🏃','🤸','🧘','🥇','✨','💯'];
+    const grid = document.getElementById('edit-profile-emoji-grid');
+    grid.innerHTML = emojis.map(e =>
+      '<button class="emoji-pick-btn' + (e === currentEmoji ? ' selected' : '') + '" type="button" onclick="AppUI.pickProfileEmoji(this, \'' + e + '\')">' + e + '</button>'
+    ).join('');
+
+    this.openOverlay('overlay-edit-profile');
+  },
+
+  pickProfileEmoji(btn, emoji) {
+    document.getElementById('edit-profile-emoji-preview').textContent = emoji;
+    document.querySelectorAll('.emoji-pick-btn.selected').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  },
+
+  saveProfile() {
+    const data = AppData.load();
+    if (!data.user) data.user = {};
+    data.user.name = document.getElementById('edit-profile-name').value.trim().substring(0, 30);
+    data.user.bio = document.getElementById('edit-profile-bio').value.trim().substring(0, 60);
+    data.user.emoji = document.getElementById('edit-profile-emoji-preview').textContent.trim() || '🏋️';
+    AppData.save(data);
+
+    // Update header immediately
+    document.getElementById('profile-avatar').textContent = data.user.emoji;
+    document.getElementById('profile-name').textContent = data.user.name || 'Mon Profil';
+    if (data.user.bio) {
+      document.getElementById('profile-tagline').textContent = data.user.bio;
+    }
+    this.updateGreeting();
+    this.closeOverlay('overlay-edit-profile');
+    this.showToast('Profil mis à jour');
   },
 
   // --- Export / Import / Reset ---
@@ -1140,7 +2063,7 @@ const AppUI = {
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (e) {
-      alert('Erreur lors de l\'export');
+      this.showToast('Erreur lors de l\'export');
     }
   },
 
@@ -1242,11 +2165,8 @@ const AppUI = {
 
     AppData.save(data);
 
-    alert(
-      'Données de test générées !\n' +
-      '• ' + createdPrograms.length + ' programmes\n' +
-      '• ' + data.sessions.length + ' séances sur 3 mois\n' +
-      '• Progression réaliste incluse'
+    this.showToast(
+      createdPrograms.length + ' programmes, ' + data.sessions.length + ' séances générées'
     );
 
     AppData.invalidateCache();
@@ -1265,18 +2185,22 @@ const AppUI = {
       reader.onload = (ev) => {
         try {
           const imported = JSON.parse(ev.target.result);
-          if (!imported.programs && !imported.sessions) {
+          if (!imported || typeof imported !== 'object' || (!Array.isArray(imported.programs) && !Array.isArray(imported.sessions))) {
             throw new Error('Invalid format');
           }
+          // Ensure required arrays exist
+          if (!Array.isArray(imported.programs)) imported.programs = [];
+          if (!Array.isArray(imported.sessions)) imported.sessions = [];
           AppData.save(imported);
           AppData.invalidateCache();
           this.updateDashboard();
           this.updatePrograms();
           this.updateHistorique();
           this.updateStats();
-          alert('Données importées avec succès');
+          this.updateProfile();
+          this.showToast('Données importées avec succès');
         } catch (err) {
-          alert('Fichier invalide');
+          this.showToast('Fichier invalide');
         }
       };
       reader.readAsText(e.target.files[0]);
@@ -1292,6 +2216,9 @@ const AppUI = {
         this.updatePrograms();
         this.updateHistorique();
         this.updateStats();
+        this.updateProfile();
+        this.updateGreeting();
+        this.showToast('Données supprimées');
       }
     }
   }
@@ -1301,8 +2228,16 @@ const AppUI = {
 // APP INIT
 // ================================================================
 document.addEventListener('DOMContentLoaded', () => {
+  // Version display
+  const versionEl = document.getElementById('app-version');
+  if (versionEl) versionEl.textContent = 'RepLift v' + APP_VERSION;
+
+  // Greeting
+  AppUI.updateGreeting();
+
+  // Only render the active page at startup (lazy-load the rest)
   AppUI.updateDashboard();
-  AppUI.updatePrograms();
-  AppUI.updateHistorique();
-  AppUI.updateStats();
+
+  // Setup swipe-to-close on overlays
+  AppUI.setupSwipeToClose();
 });

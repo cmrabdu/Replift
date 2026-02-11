@@ -12,41 +12,46 @@
   <body>
     <div class="app">
       <header>
-        <h1>RepLift</h1>
+        <span class="header-greeting" id="header-greeting">Bonjour</span>
+        <span class="header-brand">RepLift</span>
       </header>
 
       <!-- ========== Dashboard Page ========== -->
       <div id="dashboard" class="page active">
         <div class="stats-grid">
           <div class="stat-card dark-1">
-            <div class="stat-card-icon">&#127947;&#65039;</div>
-            <div class="stat-card-label">Seances Totales</div>
-            <div class="stat-card-value" id="stat-total">0</div>
-          </div>
-          <div class="stat-card dark-2">
-            <div class="stat-card-icon">&#128197;</div>
-            <div class="stat-card-label">Ce Mois</div>
+            <div class="stat-card-icon">📅</div>
+            <div class="stat-card-label">Séances ce mois</div>
             <div class="stat-card-value" id="stat-month">0</div>
           </div>
+          <div class="stat-card dark-2">
+            <div class="stat-card-icon">💪</div>
+            <div class="stat-card-label">Volume ce mois</div>
+            <div class="stat-card-value" id="stat-volume-month">0 kg</div>
+          </div>
           <div class="stat-card dark-3">
-            <div class="stat-card-icon">&#128293;</div>
-            <div class="stat-card-label">Streak</div>
-            <div class="stat-card-value" id="stat-streak">0</div>
+            <div class="stat-card-icon">📈</div>
+            <div class="stat-card-label">Progression 30j</div>
+            <div class="stat-card-value" id="stat-progression">-</div>
           </div>
           <div class="stat-card dark-4">
-            <div class="stat-card-icon">&#9889;</div>
-            <div class="stat-card-label">Poids Max</div>
-            <div class="stat-card-value" id="stat-maxweight">-</div>
+            <div class="stat-card-icon">🏆</div>
+            <div class="stat-card-label">PRs ce mois</div>
+            <div class="stat-card-value" id="stat-prs-month">0</div>
           </div>
-          <div class="stat-card large dark-5">
-            <div class="stat-card-icon">&#128200;</div>
-            <div class="stat-card-label">Meilleur Exercice</div>
-            <div class="stat-card-value" id="stat-bestexo">-</div>
+          <div class="stat-card dark-5">
+            <div class="stat-card-icon">⏱️</div>
+            <div class="stat-card-label">Dernière séance</div>
+            <div class="stat-card-value" id="stat-last-session">-</div>
           </div>
           <div class="stat-card dark-6">
-            <div class="stat-card-icon">&#128336;</div>
-            <div class="stat-card-label">Derniere Seance</div>
-            <div class="stat-card-value" id="stat-last">-</div>
+            <div class="stat-card-icon">🔥</div>
+            <div class="stat-card-label">Série hebdo</div>
+            <div class="stat-card-value" id="stat-weekly-streak">0</div>
+          </div>
+          <div class="stat-card large dark-1">
+            <div class="stat-card-label" style="margin-bottom:8px;font-size:var(--font-sm);text-transform:uppercase;letter-spacing:0.5px">Activité</div>
+            <div id="heatmap-container" class="heatmap-container"></div>
           </div>
         </div>
       </div>
@@ -55,29 +60,29 @@
       <div id="stats" class="page">
         <div class="page-title"><span>Statistiques</span></div>
         
-        <!-- Volume & Performance -->
+        <!-- Métriques Stratégiques -->
         <div class="stats-section">
-          <h3 class="section-title">Volume & Performance</h3>
+          <h3 class="section-title">📊 Métriques Stratégiques</h3>
           <div class="stats-grid">
             <div class="stat-card dark-1">
-              <div class="stat-card-icon">🏋️</div>
+              <div class="stat-card-icon">💪</div>
               <div class="stat-card-label">Volume Total</div>
               <div class="stat-card-value" id="stat-total-volume">0 kg</div>
             </div>
             <div class="stat-card dark-2">
-              <div class="stat-card-icon">🔢</div>
-              <div class="stat-card-label">Reps Totales</div>
-              <div class="stat-card-value" id="stat-total-reps">0</div>
+              <div class="stat-card-icon">⚡</div>
+              <div class="stat-card-label">Intensité Moy.</div>
+              <div class="stat-card-value" id="stat-avg-intensity">0 kg/rep</div>
             </div>
             <div class="stat-card dark-3">
-              <div class="stat-card-icon">⚡</div>
-              <div class="stat-card-label">Moy. Par Séance</div>
-              <div class="stat-card-value" id="stat-avg-volume">0 kg</div>
+              <div class="stat-card-icon">⚖️</div>
+              <div class="stat-card-label">Équilibrage</div>
+              <div class="stat-card-value" id="stat-muscle-balance">-</div>
             </div>
             <div class="stat-card dark-4">
-              <div class="stat-card-icon">🎯</div>
-              <div class="stat-card-label">Exercices Uniques</div>
-              <div class="stat-card-value" id="stat-unique-exercises">0</div>
+              <div class="stat-card-icon">📈</div>
+              <div class="stat-card-label">Prog. Mensuelle</div>
+              <div class="stat-card-value" id="stat-progression-rate">0%</div>
             </div>
           </div>
         </div>
@@ -105,22 +110,16 @@
           </div>
         </div>
 
-        <!-- Exercices Favoris -->
-        <div class="stats-section">
-          <h3 class="section-title">💪 Exercices Favoris</h3>
-          <div id="favorite-exercises" class="favorites-list"></div>
-        </div>
-
         <!-- Évolution par Exercice -->
         <div class="stats-section">
           <h3 class="section-title">📊 Évolution par Exercice</h3>
           <div id="exercise-evolution" class="evolution-list"></div>
         </div>
 
-        <!-- Badges de Progression -->
-        <div class="stats-section">
-          <h3 class="section-title">🎖️ Achievements</h3>
-          <div id="achievements" class="badges-grid"></div>
+        <!-- Derniers Succès -->
+        <div class="stats-section" id="recent-achievements-section" style="display: none;">
+          <h3 class="section-title">🎖️ Derniers Succès</h3>
+          <div id="recent-achievements" class="badges-grid"></div>
         </div>
       </div>
 
@@ -151,22 +150,70 @@
       <!-- ========== Profil Page ========== -->
       <div id="profil" class="page">
         <div class="page-title"><span>Profil</span></div>
+
+        <!-- En-tête Profil + Résumé Rapide -->
+        <div class="profile-header" onclick="AppUI.openEditProfile()">
+          <div class="profile-avatar" id="profile-avatar">🏋️</div>
+          <div class="profile-info">
+            <div class="profile-name" id="profile-name">Mon Profil</div>
+            <div class="profile-tagline" id="profile-tagline">Prêt à en découdre</div>
+            <div class="profile-rank" id="profile-rank"></div>
+          </div>
+          <div class="profile-edit-hint">✏️</div>
+        </div>
+
+        <div class="profile-summary" id="profile-summary">
+          <div class="profile-stat">
+            <span class="profile-stat-value" id="prof-sessions">0</span>
+            <span class="profile-stat-label">Séances</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-value" id="prof-volume">0t</span>
+            <span class="profile-stat-label">Soulevé</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-value" id="prof-streak">0</span>
+            <span class="profile-stat-label">Streak (sem.)</span>
+          </div>
+          <div class="profile-stat">
+            <span class="profile-stat-value" id="prof-prs">0</span>
+            <span class="profile-stat-label">Records</span>
+          </div>
+        </div>
+
+        <!-- Achievements (aperçu compact) -->
         <div class="settings-group">
-          <h3>Données</h3>
-          <button class="btn" onclick="AppUI.exportData()">Exporter donnees</button>
-          <button class="btn" onclick="AppUI.importData()">Importer donnees</button>
+          <div class="profile-section-header">
+            <h3>🎖️ Succès</h3>
+            <span class="profile-badge-count" id="achievements-count">0/18</span>
+          </div>
+          <div id="profile-achievements-preview" class="profile-achievements-preview"></div>
+          <button class="btn profile-see-all-btn" onclick="AppUI.openAllAchievements()">Voir tous les succès</button>
+        </div>
+
+        <!-- Évolution 12 mois -->
+        <div class="settings-group">
+          <h3>📈 Évolution</h3>
+          <div id="profile-evolution" class="profile-evolution"></div>
+        </div>
+
+        <!-- Paramètres & Données -->
+        <div class="settings-group">
+          <h3>📁 Données</h3>
+          <button class="btn" onclick="AppUI.exportData()">Exporter données</button>
+          <button class="btn" onclick="AppUI.importData()">Importer données</button>
         </div>
         <div class="settings-group">
-          <h3>Développement</h3>
+          <h3>🧪 Développement</h3>
           <button class="btn" onclick="AppUI.generateTestData()">Générer données de test</button>
         </div>
         <div class="settings-group">
-          <h3>Zone Danger</h3>
-          <button class="btn btn-danger" onclick="AppUI.resetData()">Reinitialiser toutes les donnees</button>
+          <h3>⚠️ Zone Danger</h3>
+          <button class="btn btn-danger" onclick="AppUI.resetData()">Réinitialiser toutes les données</button>
         </div>
         <div class="app-footer">
           <p>Made with ❤️ by Abdullah Cammur</p>
-          <p class="app-version">RepLift v1.0.1</p>
+          <p class="app-version" id="app-version"></p>
         </div>
       </div>
 
@@ -185,7 +232,7 @@
         </div>
         <div class="nav-item" onclick="AppUI.switchPage(event, 'seance')">
           <div class="nav-item-icon">&#128170;</div>
-          <div class="nav-item-label">Entraînement</div>
+          <div class="nav-item-label">Séances</div>
         </div>
         <div class="nav-item" onclick="AppUI.switchPage(event, 'profil')">
           <div class="nav-item-icon">&#128100;</div>
@@ -209,7 +256,9 @@
         <button class="add-link" onclick="AppUI.addExerciseToForm()">+ Ajouter un exercice</button>
         <div style="margin-top: 30px;">
           <button class="btn btn-white" onclick="AppUI.saveProgram()">Sauvegarder</button>
+          <button class="btn" id="btn-duplicate-program" style="display:none; background: var(--color-primary); color:#fff; margin-top:10px;" onclick="AppUI.duplicateCurrentProgram()">Dupliquer</button>
           <button class="btn btn-danger" id="btn-delete-program" style="display:none;" onclick="AppUI.deleteCurrentProgram()">Supprimer ce programme</button>
+          <button class="btn btn-danger" id="btn-delete-program-sessions" style="display:none; opacity:0.7; font-size:0.85rem;" onclick="AppUI.deleteCurrentProgramWithSessions()">Supprimer avec ses séances</button>
         </div>
       </div>
     </div>
@@ -233,6 +282,10 @@
         <button class="overlay-close" onclick="AppUI.confirmCloseSession()">&#10005;</button>
       </div>
       <div class="overlay-content">
+        <div class="session-timer" id="session-timer">
+          <div class="session-timer-value" id="session-timer-value">00:00</div>
+          <div class="session-timer-label">Durée</div>
+        </div>
         <div id="active-session-exercises"></div>
         <div style="margin-top: 30px;">
           <button class="btn btn-white" onclick="AppUI.saveSession()">Terminer la seance</button>
@@ -251,6 +304,44 @@
         <div style="margin-top: 30px;">
           <button class="btn btn-danger" onclick="AppUI.deleteCurrentSession()">Supprimer cette seance</button>
         </div>
+      </div>
+    </div>
+
+    <!-- ========== OVERLAY: Tous les achievements ========== -->
+    <div id="overlay-all-achievements" class="overlay">
+      <div class="overlay-header">
+        <h2>🎖️ Tous les Succès</h2>
+        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-all-achievements')">✕</button>
+      </div>
+      <div class="overlay-content">
+        <div class="achievements-progress-bar">
+          <div class="achievements-progress-fill" id="achievements-progress-fill"></div>
+        </div>
+        <p class="achievements-progress-text" id="achievements-progress-text">0/18 débloqués</p>
+        <div id="all-achievements-list" class="all-achievements-list"></div>
+      </div>
+    </div>
+
+    <!-- ========== OVERLAY: Modifier le profil ========== -->
+    <div id="overlay-edit-profile" class="overlay">
+      <div class="overlay-header">
+        <h2>Modifier le Profil</h2>
+        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-edit-profile')">✕</button>
+      </div>
+      <div class="overlay-content">
+        <div class="edit-profile-emoji-section">
+          <div class="edit-profile-emoji-preview" id="edit-profile-emoji-preview">🏋️</div>
+          <div class="edit-profile-emoji-grid" id="edit-profile-emoji-grid"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nom</label>
+          <input type="text" id="edit-profile-name" class="form-input" placeholder="Ton nom" maxlength="30">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bio</label>
+          <input type="text" id="edit-profile-bio" class="form-input" placeholder="Décris ton objectif" maxlength="60">
+        </div>
+        <button class="btn btn-white" onclick="AppUI.saveProfile()">Enregistrer</button>
       </div>
     </div>
 
@@ -294,6 +385,12 @@
         </div>
       </div>
     </div>
+
+    <!-- Toast notification -->
+    <div class="toast" id="app-toast"></div>
+
+    <!-- Chart tooltip -->
+    <div class="chart-tooltip" id="chart-tooltip" style="display:none"></div>
 
     <script src="app.js"></script>
   </body>

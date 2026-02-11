@@ -4,18 +4,18 @@
 
 RepLift est une application web minimaliste et performante pour suivre vos performances en musculation, séance après séance. Conçue mobile-first avec une interface dark élégante.
 
-**📦 État actuel** : ✅ **Production Ready** — Toutes les fonctionnalités core implémentées et testées (Février 2026)
+**📦 État actuel** : ✅ **Production Ready** — v1.1.0 (11 Février 2026)
 
 ---
 
 ## 🎯 Aperçu Rapide
 
-- **3 fichiers** : HTML (293L) + CSS (1018L) + JS (1308L) = 2619 lignes totales
+- **3 fichiers** : HTML (397L) + CSS (2215L) + JS (2243L) = 4855 lignes totales
 - **Zero dépendances** : Vanilla JavaScript, pas de build, pas de framework
-- **Fonctionnel à 100%** : Programmes, sessions, historique, stats avancées, graphiques
-- **Performance optimale** : Cache en mémoire, localStorage, rendu Canvas
+- **Fonctionnel à 100%** : Programmes, sessions, historique, stats avancées, graphiques, achievements
+- **Performance optimale** : Cache mémoire, memoization stats, localStorage, rendu Canvas
 - **Mobile-first** : Pensé pour utilisation en salle de sport
-- **Code quality** : Architecture en couches, strict mode, protection XSS
+- **Code quality** : Architecture en couches, strict mode, protection XSS, null-safe DOM
 
 ---
 
@@ -23,8 +23,8 @@ RepLift est une application web minimaliste et performante pour suivre vos perfo
 
 RepLift utilise **Semantic Versioning** : `MAJOR.MINOR.PATCH`
 
-### Version actuelle : **v1.0.1**
-*Dernière mise à jour : 10 Février 2026*
+### Version actuelle : **v1.1.0**
+*Dernière mise à jour : 11 Février 2026*
 
 ### Règles d'incrémentation
 
@@ -66,6 +66,52 @@ Nouvelles **fonctionnalités** sans casser l'existant :
 
 ### Changelog
 
+**v1.1.0** — 11 Février 2026
+
+*Refonte majeure — Dashboard redesign, UX overhaul, audit complet*
+
+**Nouvelles fonctionnalités**
+- ✨ Dashboard redesigné : 7 métriques (séances/mois, volume, progression 30j, PRs mois, dernière séance, série hebdo) + widget calendrier heatmap navigable
+- ✨ Page Stats enrichie : métriques stratégiques (volume total, intensité moyenne, balance musculaire Push/Pull, taux progression), records personnels, tendances, évolution par exercice avec graphiques Canvas
+- ✨ Page Profil complète : avatar emoji, bio éditable, 18 achievements déblocables, système de rang (Rookie → Légende), stats d'évolution mensuelle
+- ✨ Système de **toast notifications** — remplace tous les `alert()` natifs
+- ✨ **Timer de session** live (mm:ss) pendant les séances actives
+- ✨ **Swipe-to-close** sur tous les overlays (geste pull-down)
+- ✨ **Historique paginé** par mois avec navigation ← →
+- ✨ **Duplication de programmes** (bouton "Dupliquer" dans l'édition)
+- ✨ **Suppression programme + séances** associées (option dédiée)
+- ✨ **Tooltip tactile** sur les graphiques Canvas (touch & hover)
+- ✨ **Greeting dynamique** dans le header ("Bonjour, {nom}" selon l'heure)
+- ✨ **Rang profil** basé sur les achievements (🆕 Rookie → 🏆 Légende)
+- ✨ Hint "Tap pour voir le graphique" sur les exercices d'évolution
+- ✨ Vibration haptique au lancement de séance (FAB)
+- ✨ Version affichée dynamiquement dans le footer via `APP_VERSION`
+
+**Améliorations architecture**
+- ⚡ **Memoization** des calculs lourds (AppStats._cached) : getTotalVolume, getTotalReps, getPersonalRecords, getWeeklyStreak
+- ⚡ Invalidation automatique du cache memo sur `invalidateCache()`
+- ⚡ **Init optimisé** : seul le dashboard est rendu au démarrage, les autres pages en lazy-load
+- ⚡ **Migration données** : `replift_recent_achievements` fusionné dans `replift_data` principal
+- ⚡ Modèle de données enrichi : champs `version` et `recentAchievements`
+- ⚡ Méthodes AppData nouvelles : `duplicateProgram()`, `deleteProgramWithSessions()`
+- ⚡ Safe DOM helper `$()` — accès null-safe aux éléments
+
+**Corrections de bugs**
+- 🐛 Fix saveSession utilisait `placeholder` comme valeur réelle (auto-remplissage fantôme)
+- 🐛 saveSession appelle maintenant `updateProfile()` après sauvegarde
+- 🐛 Balance musculaire : liste Push/Pull enrichie (22+ exercices chaque)
+- 🐛 Import données : validation stricte (objet + arrays requis)
+
+**Améliorations UI/CSS**
+- 🎨 Navbar glassmorphism avec backdrop-filter et FAB gradient
+- 🎨 Header redesigné : plus fin, glassmorphism, greeting dynamique + brand
+- 🎨 CSS variable `--color-primary: #6366f1` définie dans `:root`
+- 🎨 Alias `--fs-xs`, `--fs-sm`, `--fs-base` ajoutés
+- 🎨 Suppression CSS mort (`.favorites-*`)
+- 🎨 Badge `.recent` avec animation pulse
+- 🎨 Nouveaux composants CSS : toast, session-timer, profile-rank, historique-nav, chart-tooltip, evolution-item-hint
+- 🎨 Labels traduits : "Série hebdo", "Activité", "Séances"
+
 **v1.0.1** — 10 Février 2026
 - 🎨 Refonte responsive complète
 - ✅ Système de 48 CSS variables (couleurs, espacements, fonts)
@@ -93,37 +139,49 @@ Nouvelles **fonctionnalités** sans casser l'existant :
 ## ✨ Fonctionnalités
 
 ### 🎯 Core Features
-- **Programmes personnalisables** : Création, modification, suppression de templates avec exercices et séries
+- **Programmes personnalisables** : Création, modification, duplication, suppression (avec ou sans séances associées)
 - **Sessions avec Ghost Data** : Démarrage de séance avec affichage des performances précédentes en transparence
-- **Historique complet** : Liste des séances avec détails (exercices, séries, poids, reps, volume)
-- **Dashboard temps réel** : Stats automatiques (total séances, mois actuel, streak, poids max, meilleur exercice)
+- **Timer de session** : Chronomètre live mm:ss pendant l'entraînement
+- **Historique paginé** : Navigation mois par mois avec détails (exercices, séries, poids, reps, volume)
+- **Dashboard temps réel** : 7 métriques + calendrier heatmap navigable (12 mois)
 
 ### 📊 Statistiques Avancées
-- **Page Stats dédiée** : 6 sections complètes d'analyse
-  - Volume & Performance (total, reps, moyenne par séance, exercices uniques)
-  - Records personnels par exercice (poids max avec date)
-  - Tendances (comparaison semaine/mois vs périodes précédentes)
-  - Exercices favoris (classement par fréquence)
-  - Évolution par exercice (progression, meilleur volume, dernière session)
-  - Achievements/Badges (système de récompenses)
+- **Page Stats dédiée** : Métriques stratégiques complètes
+  - Volume total & Intensité moyenne (kg/rep)
+  - Balance musculaire Push/Pull (22+ exercices reconnus par catégorie)
+  - Taux de progression mensuel
+  - Records personnels par exercice (poids max + date)
+  - Tendances semaine/mois vs périodes précédentes
+  - Évolution par exercice (progression %, trend, graphique interactif)
+  - Achievements récents
   
-- **Graphiques d'évolution** : Charts interactifs par exercice avec Canvas
-  - Visualisation volume/poids/reps dans le temps
+- **Graphiques d'évolution** : Charts interactifs Canvas par exercice
+  - Visualisation poids dans le temps avec tooltip tactile
   - Multi-périodes (7j, 30j, 3M, 6M, 1A)
   - Stats calculées (progression %, meilleure session, dernière session)
 
+### 🏆 Profil & Gamification
+- **Profil personnalisable** : Avatar emoji, nom, bio éditable
+- **18 Achievements** : Badges déblocables (séances, volume, streak, diversité, reps)
+- **Système de rang** : 🆕 Rookie → 🌱 Débutant → ⚡ Confirmé → 🔥 Expert → 💎 Élite → 🏆 Légende
+- **Évolution mensuelle** : Meilleur mois, moyenne mensuelle, ancienneté
+
 ### 🎨 Interface & UX
 - **Thème dark optimisé** : Palette `#0f0f0f` / `#1f1f1f` avec accents violets
-- **Navigation fluide** : Bottom navbar avec FAB (Floating Action Button)
-- **Overlays modaux** : Animations slide-up pour toutes les actions
-- **Mobile-first** : Interface pensée pour la salle de sport (max-width: 600px)
-- **Responsive** : Design adaptatif avec grid CSS
+- **Glassmorphism** : Navbar et header avec backdrop-filter
+- **Navigation fluide** : Bottom navbar avec FAB gradient + vibration haptique
+- **Toast notifications** : Feedback non-bloquant pour toutes les actions
+- **Swipe-to-close** : Geste pull-down pour fermer les overlays
+- **Greeting dynamique** : "Bonjour/Bon après-midi/Bonsoir, {nom}"
+- **Mobile-first responsive** : 6 breakpoints, safe areas iPhone, touch targets 44px+
+- **Lazy-loading** : Seul le dashboard est rendu au démarrage
 
 ### 💾 Gestion des Données
-- **localStorage natif** : Persistance locale (`replift_data`)
-- **Export/Import JSON** : Backup et transfer de données
-- **Générateur de données test** : Population rapide avec progression réaliste sur 3 mois
-- **Reset sécurisé** : Réinitialisation avec confirmation
+- **localStorage natif** : Persistance locale (`replift_data`) avec cache mémoire + memoization
+- **Export/Import JSON** : Backup avec validation stricte à l'import
+- **Générateur de données test** : 3 programmes + 36 séances sur 3 mois avec progression réaliste
+- **Reset sécurisé** : Double confirmation
+- **Migration automatique** : Fusion des clés localStorage legacy dans le store principal
 
 ---
 
@@ -132,97 +190,96 @@ Nouvelles **fonctionnalités** sans casser l'existant :
 ### Structure des Fichiers
 ```
 RepLift/
-├── index.html      (293 lignes)  — Structure HTML uniquement
-├── style.css       (1018 lignes) — Styles complets, dark theme
-├── app.js          (1308 lignes) — Logique complète en vanilla JS
-├── README.md       — Documentation
+├── index.html      (397 lignes)  — Structure HTML, 7 overlays
+├── style.css       (2215 lignes) — Styles complets, dark theme, glassmorphism, responsive
+├── app.js          (2243 lignes) — Logique en 3 couches, memoization, toast, timer
+├── README.md       — Documentation complète
 └── TODO.md         — Roadmap et backlog
 ```
-
-**Migration réalisée (Février 2026)** : Passage d'un fichier monolithique HTML de 2184 lignes à une architecture modulaire propre en 3 fichiers séparés.
 
 ### Architecture Logique (app.js)
 
 #### 1️⃣ AppData — Couche de persistance
-Gestion localStorage avec **cache intégré** pour optimisation des lectures répétées.
+Gestion localStorage avec **cache intégré** et migration automatique.
 
 **Méthodes principales** :
-- `load()` : Charger depuis localStorage
-- `save(data)` : Sauvegarder dans localStorage
-- `clear()` : Réinitialiser les données
-- `invalidateCache()` : Vider le cache après modifications
-- `addProgram(program)` : Ajouter un programme
-- `updateProgram(id, data)` : Mettre à jour un programme
-- `deleteProgram(id)` : Supprimer un programme
-- `addSession(session)` : Ajouter une séance
-- `getPrograms()` : Récupérer tous les programmes (avec cache)
-- `getSessions()` : Récupérer toutes les séances (avec cache)
-- `getSessionById(id)` : Récupérer une séance par ID
-- `getProgramById(id)` : Récupérer un programme par ID
-- `deleteSession(id)` : Supprimer une séance
+- `load()` / `save(data)` / `clear()` : CRUD localStorage
+- `invalidateCache()` : Vide le cache AppData + AppStats memo
+- `getDefaultData()` : Structure par défaut avec version, programmes, sessions, user, recentAchievements
+- `addProgram()` / `updateProgram()` / `deleteProgram()` : CRUD programmes
+- `duplicateProgram(id)` : Clone un programme avec suffixe " (copie)"
+- `deleteProgramWithSessions(id)` : Supprime programme ET ses séances
+- `addSession()` / `deleteSession()` : CRUD séances
+- `getPrograms()` / `getSessions()` : Lecture avec cache
+- `getSessionById()` / `getProgramById()` / `getLastSessionForProgram()` : Lookups
 
-#### 2️⃣ AppStats — Couche de calcul (pur)
-Fonctions de calcul sans effets de bord, testables unitairement.
+#### 2️⃣ AppStats — Couche de calcul (pur, memoized)
+Fonctions de calcul sans effets de bord, avec **memoization** via `_cached(key, fn)`.
 
-**Méthodes statistiques** :
-- `getTotalSessions()` : Nombre total de séances
-- `getSessionsThisMonth()` : Séances du mois actuel
-- `getCurrentStreak()` : Streak de jours consécutifs d'entraînement
-- `getMaxWeight()` : Poids maximum soulevé (exercice + poids)
-- `getBestExercise()` : Exercice le plus pratiqué
-- `getLastSessionDate()` : Date de la dernière séance
-- `getTotalVolume()` : Volume total soulevé (kg)
-- `getTotalReps()` : Répétitions totales
-- `getAverageVolumePerSession()` : Volume moyen par séance
-- `getUniqueExercises()` : Nombre d'exercices uniques pratiqués
-- `getPersonalRecords()` : Records personnels par exercice
-- `getWeekTrend()` : Tendance hebdomadaire (comparaison vs semaine précédente)
-- `getMonthTrend()` : Tendance mensuelle (comparaison vs mois précédent)
-- `getFavoriteExercises(n)` : Top N exercices favoris
-- `getExercisesForEvolution()` : Liste des exercices avec stats de progression
-- `getExerciseEvolution(exerciseName, period)` : Données d'évolution pour graphique
-- `getBadges()` : Achievements débloqués
+**Méthodes memoized** :
+- `getTotalVolume()` / `getTotalReps()` : Agrégats globaux (memoized)
+- `getPersonalRecords()` : Top 5 records par exercice (memoized)
+- `getWeeklyStreak()` : Semaines consécutives d'activité (memoized)
+
+**Méthodes standard** :
+- `getSessionsThisMonth()` / `getMonthlyVolume()` : Stats du mois
+- `get30DayProgression()` / `getPRsThisMonth()` / `getDaysSinceLastSession()` : Dashboard
+- `getCurrentStreak()` / `getUniqueExercises()` : Activité
+- `getAverageIntensity()` : Volume moyen par rep (kg/rep)
+- `getMuscleBalance()` : Ratio Push/Pull (22+ exercices reconnus par catégorie)
+- `getProgressionRate()` : Évolution % sur 3 mois
+- `getWeekStats()` / `getMonthVolumeComparison()` : Tendances comparatives
+- `getFavoriteExercises()` : Top 5 par fréquence
+- `getExercisesForEvolution()` / `getExerciseEvolution()` : Données graphiques
+- `getCalendarData()` : Données heatmap pour le calendrier
+- `getAchievements()` : 18 achievements avec état earned/locked
+- `getRecentAchievements()` : 3 derniers achievements (stockés dans données principales)
+- `getProfileSummary()` / `getProfileEvolution()` : Stats profil
+- `clearMemo()` : Invalidation du cache memoization
 
 #### 3️⃣ AppUI — Couche de présentation
-Gestion DOM, événements, rendu visuel, overlays.
+Gestion DOM, événements, rendu visuel, overlays, toast, timer.
 
-**Navigation** :
-- `switchPage(evt, pageName)` : Changement de page avec animation
-- `switchSeanceTab(evt, tabName)` : Switch Programmes/Historique
-- `openOverlay(id)` / `closeOverlay(id)` : Gestion des modales
+**Navigation & Core** :
+- `switchPage()` / `switchSeanceTab()` : Navigation pages et onglets
+- `openOverlay()` / `closeOverlay()` : Gestion des 7 overlays modaux
+- `setupSwipeToClose()` : Geste pull-down sur overlays
+- `updateGreeting()` : Greeting dynamique dans le header
+- `showToast(msg, duration)` : Notification non-bloquante
+- `$(id)` : Accès DOM null-safe
 
-**CRUD Programmes** :
-- `openCreateProgram(programId)` : Ouvrir formulaire (création ou édition)
-- `saveProgram()` : Sauvegarder programme
-- `deleteCurrentProgram()` : Supprimer programme actif
-- `addExerciseToForm()` : Ajouter un exercice au formulaire
-- `addSeriesToExercise(index)` : Ajouter une série
+**Dashboard** :
+- `updateDashboard()` : 7 métriques + calendrier
+- `renderCalendar()` / `navigateCalendar()` : Heatmap navigable
+
+**Programmes** :
+- `updatePrograms()` : Liste programmes avec stats
+- `openCreateProgram()` / `openEditProgram()` : Formulaire CRUD
+- `duplicateCurrentProgram()` : Duplication
+- `deleteCurrentProgram()` / `deleteCurrentProgramWithSessions()` : Suppression
 
 **Sessions** :
-- `openStartSession()` : Sélectionner un programme
-- `startSession(programId)` : Démarrer une séance avec ghost data
-- `saveSession()` : Terminer et sauvegarder séance
-- `confirmCloseSession()` : Fermeture avec confirmation
-- `viewSession(id)` : Afficher détails d'une séance
-- `deleteCurrentSession()` : Supprimer séance active
+- `openStartSession()` : Sélection programme + vibration
+- `startSession()` : Démarrage avec ghost data + timer
+- `saveSession()` : Sauvegarde (validation stricte, pas de placeholders)
+- `startSessionTimer()` / `stopSessionTimer()` : Chronomètre live
 
-**Statistiques & Charts** :
-- `updateDashboard()` : Rafraîchir stats du dashboard
-- `updateStats()` : Calculer et afficher toutes les stats de la page Stats
-- `openExerciseChart(exerciseName)` : Ouvrir graphique d'évolution
-- `switchChartPeriod(evt, period)` : Changer période du graphique
-- `updateExerciseChart()` : Redessiner le graphique
-- `drawChart(canvas, data, config)` : Rendu Canvas du graphique
+**Historique** :
+- `updateHistorique()` : Liste paginée par mois
+- `navigateHistorique()` : Navigation ← →
+- `viewSession()` / `deleteCurrentSession()` : Détail et suppression
+
+**Stats & Graphiques** :
+- `updateStats()` : Rendu complet de la page Stats
+- `openExerciseChart()` / `drawExerciseChart()` : Graphiques Canvas avec tooltip tactile
+
+**Profil** :
+- `updateProfile()` : Avatar, rang, achievements, évolution
+- `openAllAchievements()` : Vue complète 18 achievements
+- `openEditProfile()` / `saveProfile()` : Édition profil
 
 **Données** :
-- `exportData()` : Téléchargement JSON
-- `importData()` : Upload et validation JSON
-- `generateTestData()` : Génération de 3 mois de données réalistes
-- `resetData()` : Reset complet avec confirmation
-
-**Helpers** :
-- `escAttr(str)` : Échappement sécurisé pour attributs HTML (protection XSS)
-- `formatDate(dateString)` : Formatage dates FR
+- `exportData()` / `importData()` / `resetData()` / `generateTestData()`
 
 ---
 
@@ -232,6 +289,7 @@ Gestion DOM, événements, rendu visuel, overlays.
 
 ```javascript
 {
+  "version": "1.1.0",
   "programs": [
     {
       "id": "1707567890123",
@@ -244,13 +302,6 @@ Gestion DOM, événements, rendu visuel, overlays.
             { "poids": 80, "reps": 10 },
             { "poids": 85, "reps": 8 },
             { "poids": 85, "reps": 7 }
-          ]
-        },
-        {
-          "nom": "Dips",
-          "series": [
-            { "poids": 0, "reps": 15 },  // 0 = poids du corps
-            { "poids": 0, "reps": 12 }
           ]
         }
       ]
@@ -267,31 +318,31 @@ Gestion DOM, événements, rendu visuel, overlays.
           "nom": "Développé Couché",
           "series": [
             { "poids": 82.5, "reps": 10 },
-            { "poids": 87.5, "reps": 8 },
-            { "poids": 87.5, "reps": 7 }
-          ]
-        },
-        {
-          "nom": "Dips",
-          "series": [
-            { "poids": 0, "reps": 16 },
-            { "poids": 0, "reps": 13 }
+            { "poids": 87.5, "reps": 8 }
           ]
         }
       ]
     }
   ],
   "user": {
-    "name": ""
-  }
+    "name": "Maxime",
+    "bio": "Push Pull Legs 6x/sem",
+    "emoji": "🔥"
+  },
+  "recentAchievements": [
+    { "id": "vol5k", "icon": "💪", "title": "Volume Rookie", "desc": "5 000 kg soulevés", "earned": true }
+  ]
 }
 ```
 
 ### Notes sur les données
+- **version** : Champ de version pour migrations futures
 - **poids = 0** : Indique un exercice au poids du corps (affiché comme "PDC")
 - **IDs** : Timestamp en millisecondes pour unicité
 - **dates** : Format ISO 8601 UTC
-- **Cache** : AppData maintient un cache en mémoire pour éviter JSON.parse répétés
+- **user** : Profil avec nom, bio et emoji avatar
+- **recentAchievements** : 3 derniers achievements débloqués (fusionnés dans le store principal depuis v1.1.0)
+- **Cache** : AppData maintient un cache mémoire + AppStats memoize les calculs lourds
 
 ---
 
@@ -397,21 +448,26 @@ L'application est **production-ready** sans build step :
 
 ---
 
-## 🐛 Corrections Récentes (Février 2026)
+## 🐛 Corrections Historiques (Février 2026)
 
-### Bugs critiques corrigés
-- ✅ **generateTestData** utilisait les mauvaises clés localStorage
-- ✅ **switchSeanceTab/switchChartPeriod** utilisaient `event` implicite (deprecated)
-- ✅ **Désync période graphique** : code sélectionnait 7j mais chargeait 30j
-- ✅ **XSS via noms d'exercices** : apostrophes cassaient les onclick
-- ✅ **Mutation tableau** : `getLastSession()` modifiait l'array original
-- ✅ **Memory leak** : `exportData()` ne révoquait pas les object URLs
+### v1.1.0 — Audit complet
+- ✅ **saveSession** auto-remplissage fantôme (placeholder utilisé comme valeur réelle)
+- ✅ **Balance musculaire** liste Push/Pull trop courte → enrichie (22+ exercices)
+- ✅ **recentAchievements** isolé en clé séparée → fusionné dans données principales
+- ✅ **CSS variables** `--color-primary`, `--fs-xs/sm/base` non définies → ajoutées à `:root`
+- ✅ **CSS mort** `.favorites-*` supprimé
+- ✅ **Import données** validation insuffisante → typage strict
+- ✅ **alert() natifs** → remplacés par toast notifications
 
-### Optimisations appliquées
-- ✅ **Cache AppData** : Évite JSON.parse répétés (1x par cycle de rendu max)
-- ✅ **CSS dédupliqué** : Suppression de 167 lignes de doublons
-- ✅ **Code modernisé** : `var` → `const/let`, fonctions dupliquées supprimées
-- ✅ **UX améliorée** : "PDC" au lieu de "0 kg" pour poids de corps
+### v1.0.1 — Responsive
+- ✅ iOS zoom sur inputs (font-size: 16px)
+- ✅ generateTestData localStorage keys fix
+- ✅ XSS via noms d'exercices
+- ✅ Memory leak exportData
+- ✅ Cache AppData, CSS dédupliqué, code modernisé
+
+### v1.0.0 — Release initiale
+- ✅ Architecture 3 couches, programmes, sessions, stats, graphiques Canvas
 
 ---
 
