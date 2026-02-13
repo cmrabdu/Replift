@@ -3,13 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-    <meta name="theme-color" content="#0f0f0f" />
+    <meta name="theme-color" content="#111113" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>RepLift - Suivi Muscu</title>
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
+    <!-- SVG Icon Sprite -->
+    <svg xmlns="http://www.w3.org/2000/svg" class="svg-sprite" aria-hidden="true">
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+      <symbol id="i-bar-chart" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></symbol>
+      <symbol id="i-clipboard" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></symbol>
+      <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+      <symbol id="i-dumbbell" viewBox="0 0 24 24"><path d="M6.5 12h11"/><rect x="3.5" y="8" width="4" height="8" rx="1"/><rect x="16.5" y="8" width="4" height="8" rx="1"/></symbol>
+      <symbol id="i-trending-up" viewBox="0 0 24 24"><path d="m23 6-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></symbol>
+      <symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.48 13.12 17 22l-5-3-5 3 1.52-8.88"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+      <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 2c0 4-6 5.75-6 11a6 6 0 0 0 12 0c0-5.25-6-7-6-11z"/></symbol>
+      <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21V14M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+      <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+      <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-file-text" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></symbol>
+      <symbol id="i-chevron-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    </svg>
+
     <div class="app">
       <header>
         <span class="header-greeting" id="header-greeting">Bonjour</span>
@@ -20,37 +45,37 @@
       <div id="dashboard" class="page active">
         <div class="stats-grid">
           <div class="stat-card dark-1">
-            <div class="stat-card-icon">📅</div>
+            <div class="stat-card-icon"><svg class="icon"><use href="#i-calendar"/></svg></div>
             <div class="stat-card-label">Séances ce mois</div>
             <div class="stat-card-value" id="stat-month">0</div>
           </div>
           <div class="stat-card dark-2">
-            <div class="stat-card-icon">💪</div>
+            <div class="stat-card-icon"><svg class="icon"><use href="#i-dumbbell"/></svg></div>
             <div class="stat-card-label">Volume ce mois</div>
             <div class="stat-card-value" id="stat-volume-month">0 kg</div>
           </div>
           <div class="stat-card dark-3">
-            <div class="stat-card-icon">📈</div>
+            <div class="stat-card-icon"><svg class="icon"><use href="#i-trending-up"/></svg></div>
             <div class="stat-card-label">Progression 30j</div>
             <div class="stat-card-value" id="stat-progression">-</div>
           </div>
           <div class="stat-card dark-4">
-            <div class="stat-card-icon">🏆</div>
+            <div class="stat-card-icon"><svg class="icon"><use href="#i-award"/></svg></div>
             <div class="stat-card-label">PRs ce mois</div>
             <div class="stat-card-value" id="stat-prs-month">0</div>
           </div>
           <div class="stat-card dark-5">
-            <div class="stat-card-icon">⏱️</div>
+            <div class="stat-card-icon"><svg class="icon"><use href="#i-clock"/></svg></div>
             <div class="stat-card-label">Dernière séance</div>
             <div class="stat-card-value" id="stat-last-session">-</div>
           </div>
           <div class="stat-card dark-6">
-            <div class="stat-card-icon">🔥</div>
+            <div class="stat-card-icon"><svg class="icon"><use href="#i-flame"/></svg></div>
             <div class="stat-card-label">Série hebdo</div>
             <div class="stat-card-value" id="stat-weekly-streak">0</div>
           </div>
           <div class="stat-card large dark-1">
-            <div class="stat-card-label" style="margin-bottom:8px;font-size:var(--font-sm);text-transform:uppercase;letter-spacing:0.5px">Activité</div>
+            <div class="stat-card-label stat-card-label--activity">Activité</div>
             <div id="heatmap-container" class="heatmap-container"></div>
           </div>
         </div>
@@ -62,25 +87,25 @@
         
         <!-- Métriques Stratégiques -->
         <div class="stats-section">
-          <h3 class="section-title">📊 Métriques Stratégiques</h3>
+          <h3 class="section-title">Métriques Stratégiques</h3>
           <div class="stats-grid">
             <div class="stat-card dark-1">
-              <div class="stat-card-icon">💪</div>
+              <div class="stat-card-icon"><svg class="icon"><use href="#i-dumbbell"/></svg></div>
               <div class="stat-card-label">Volume Total</div>
               <div class="stat-card-value" id="stat-total-volume">0 kg</div>
             </div>
             <div class="stat-card dark-2">
-              <div class="stat-card-icon">⚡</div>
+              <div class="stat-card-icon"><svg class="icon"><use href="#i-zap"/></svg></div>
               <div class="stat-card-label">Intensité Moy.</div>
               <div class="stat-card-value" id="stat-avg-intensity">0 kg/rep</div>
             </div>
             <div class="stat-card dark-3">
-              <div class="stat-card-icon">⚖️</div>
+              <div class="stat-card-icon"><svg class="icon"><use href="#i-sliders"/></svg></div>
               <div class="stat-card-label">Équilibrage</div>
               <div class="stat-card-value" id="stat-muscle-balance">-</div>
             </div>
             <div class="stat-card dark-4">
-              <div class="stat-card-icon">📈</div>
+              <div class="stat-card-icon"><svg class="icon"><use href="#i-trending-up"/></svg></div>
               <div class="stat-card-label">Prog. Mensuelle</div>
               <div class="stat-card-value" id="stat-progression-rate">0%</div>
             </div>
@@ -89,13 +114,13 @@
 
         <!-- Records & Achievements -->
         <div class="stats-section">
-          <h3 class="section-title">🏆 Records Personnels</h3>
+          <h3 class="section-title">Records Personnels</h3>
           <div id="personal-records" class="records-list"></div>
         </div>
 
         <!-- Tendances -->
         <div class="stats-section">
-          <h3 class="section-title">📈 Tendances</h3>
+          <h3 class="section-title">Tendances</h3>
           <div class="comparison-grid">
             <div class="comparison-card">
               <div class="comparison-period">Cette semaine</div>
@@ -112,13 +137,13 @@
 
         <!-- Évolution par Exercice -->
         <div class="stats-section">
-          <h3 class="section-title">📊 Évolution par Exercice</h3>
+          <h3 class="section-title">Évolution par Exercice</h3>
           <div id="exercise-evolution" class="evolution-list"></div>
         </div>
 
         <!-- Derniers Succès -->
         <div class="stats-section" id="recent-achievements-section" style="display: none;">
-          <h3 class="section-title">🎖️ Derniers Succès</h3>
+          <h3 class="section-title">Derniers Succès</h3>
           <div id="recent-achievements" class="badges-grid"></div>
         </div>
       </div>
@@ -159,7 +184,7 @@
             <div class="profile-tagline" id="profile-tagline">Prêt à en découdre</div>
             <div class="profile-rank" id="profile-rank"></div>
           </div>
-          <div class="profile-edit-hint">✏️</div>
+          <div class="profile-edit-hint"><svg class="icon icon--sm"><use href="#i-pencil"/></svg></div>
         </div>
 
         <div class="profile-summary" id="profile-summary">
@@ -184,7 +209,7 @@
         <!-- Achievements (aperçu compact) -->
         <div class="settings-group">
           <div class="profile-section-header">
-            <h3>🎖️ Succès</h3>
+            <h3>Succès</h3>
             <span class="profile-badge-count" id="achievements-count">0/18</span>
           </div>
           <div id="profile-achievements-preview" class="profile-achievements-preview"></div>
@@ -193,22 +218,22 @@
 
         <!-- Évolution 12 mois -->
         <div class="settings-group">
-          <h3>📈 Évolution</h3>
+          <h3>Évolution</h3>
           <div id="profile-evolution" class="profile-evolution"></div>
         </div>
 
         <!-- Paramètres & Données -->
         <div class="settings-group">
-          <h3>📁 Données</h3>
+          <h3>Données</h3>
           <button class="btn" onclick="AppUI.exportData()">Exporter données</button>
           <button class="btn" onclick="AppUI.importData()">Importer données</button>
         </div>
         <div class="settings-group">
-          <h3>🧪 Développement</h3>
+          <h3>Développement</h3>
           <button class="btn" onclick="AppUI.generateTestData()">Générer données de test</button>
         </div>
         <div class="settings-group">
-          <h3>⚠️ Zone Danger</h3>
+          <h3>Zone Danger</h3>
           <button class="btn btn-danger" onclick="AppUI.resetData()">Réinitialiser toutes les données</button>
         </div>
         <div class="app-footer">
@@ -220,25 +245,25 @@
       <!-- ========== Bottom Navigation ========== -->
       <div class="navbar">
         <div class="nav-item active" onclick="AppUI.switchPage(event, 'dashboard')">
-          <div class="nav-item-icon">&#127968;</div>
+          <div class="nav-item-icon"><svg class="icon"><use href="#i-home"/></svg></div>
           <div class="nav-item-label">Dashboard</div>
         </div>
         <div class="nav-item" onclick="AppUI.switchPage(event, 'stats')">
-          <div class="nav-item-icon">&#128200;</div>
+          <div class="nav-item-icon"><svg class="icon"><use href="#i-bar-chart"/></svg></div>
           <div class="nav-item-label">Stats</div>
         </div>
         <div class="nav-fab">
           <button id="fab-button" onclick="AppUI.handleFabClick()">
-            <span class="fab-icon">+</span>
+            <span class="fab-icon"><svg class="icon"><use href="#i-plus"/></svg></span>
             <span id="fab-badge" class="fab-badge" style="display: none;"></span>
           </button>
         </div>
         <div class="nav-item" onclick="AppUI.switchPage(event, 'seance')">
-          <div class="nav-item-icon">&#128170;</div>
+          <div class="nav-item-icon"><svg class="icon"><use href="#i-clipboard"/></svg></div>
           <div class="nav-item-label">Séances</div>
         </div>
         <div class="nav-item" onclick="AppUI.switchPage(event, 'profil')">
-          <div class="nav-item-icon">&#128100;</div>
+          <div class="nav-item-icon"><svg class="icon"><use href="#i-user"/></svg></div>
           <div class="nav-item-label">Profil</div>
         </div>
       </div>
@@ -248,7 +273,7 @@
     <div id="overlay-create-program" class="overlay">
       <div class="overlay-header">
         <h2 id="create-program-title">Nouveau Programme</h2>
-        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-create-program')">&#10005;</button>
+        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-create-program')"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <div class="form-group">
@@ -257,11 +282,11 @@
         </div>
         <div id="program-exercises"></div>
         <button class="add-link" onclick="AppUI.addExerciseToForm()">+ Ajouter un exercice</button>
-        <div style="margin-top: 30px;">
+        <div class="form-actions">
           <button class="btn btn-white" onclick="AppUI.saveProgram()">Sauvegarder</button>
-          <button class="btn" id="btn-duplicate-program" style="display:none; background: var(--color-primary); color:#fff; margin-top:10px;" onclick="AppUI.duplicateCurrentProgram()">Dupliquer</button>
+          <button class="btn btn-primary" id="btn-duplicate-program" style="display:none;" onclick="AppUI.duplicateCurrentProgram()">Dupliquer</button>
           <button class="btn btn-danger" id="btn-delete-program" style="display:none;" onclick="AppUI.deleteCurrentProgram()">Supprimer ce programme</button>
-          <button class="btn btn-danger" id="btn-delete-program-sessions" style="display:none; opacity:0.7; font-size:0.85rem;" onclick="AppUI.deleteCurrentProgramWithSessions()">Supprimer avec ses séances</button>
+          <button class="btn btn-danger btn-danger--secondary" id="btn-delete-program-sessions" style="display:none;" onclick="AppUI.deleteCurrentProgramWithSessions()">Supprimer avec ses séances</button>
         </div>
       </div>
     </div>
@@ -270,11 +295,11 @@
     <div id="overlay-recovery" class="overlay">
       <div class="overlay-header">
         <h2>Seance interrompue</h2>
-        <button class="overlay-close" onclick="AppUI.discardRecovery()">&#10005;</button>
+        <button class="overlay-close" onclick="AppUI.discardRecovery()"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <div class="recovery-card">
-          <div class="recovery-icon">💪</div>
+          <div class="recovery-icon"><svg class="icon"><use href="#i-dumbbell"/></svg></div>
           <div class="recovery-info">
             <div class="recovery-program" id="recovery-program-name">-</div>
             <div class="recovery-meta">
@@ -295,7 +320,7 @@
     <div id="overlay-select-program" class="overlay">
       <div class="overlay-header">
         <h2>Demarrer une seance</h2>
-        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-select-program')">&#10005;</button>
+        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-select-program')"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <p class="text-muted mb-20">Choisis un programme pour commencer ta seance</p>
@@ -307,8 +332,8 @@
     <div id="overlay-active-session" class="overlay">
       <div class="overlay-header">
         <h2 id="active-session-title">Seance en cours</h2>
-        <button class="overlay-minimize" onclick="AppUI.minimizeSession()" title="Minimiser">_</button>
-        <button class="overlay-close" onclick="AppUI.confirmCloseSession()">&#10005;</button>
+        <button class="overlay-minimize" onclick="AppUI.minimizeSession()" title="Minimiser"><svg class="icon"><use href="#i-chevron-down"/></svg></button>
+        <button class="overlay-close" onclick="AppUI.confirmCloseSession()"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <div class="session-timer" id="session-timer">
@@ -316,7 +341,7 @@
           <div class="session-timer-label">Durée</div>
         </div>
         <div id="active-session-exercises"></div>
-        <div style="margin-top: 30px;">
+        <div class="form-actions">
           <button class="btn btn-white" onclick="AppUI.saveSession()">Terminer la seance</button>
         </div>
       </div>
@@ -326,11 +351,11 @@
     <div id="overlay-session-detail" class="overlay">
       <div class="overlay-header">
         <h2 id="session-detail-title">Detail Seance</h2>
-        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-session-detail')">&#10005;</button>
+        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-session-detail')"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <div id="session-detail-content"></div>
-        <div style="margin-top: 30px;">
+        <div class="form-actions">
           <button class="btn btn-danger" onclick="AppUI.deleteCurrentSession()">Supprimer cette seance</button>
         </div>
       </div>
@@ -339,8 +364,8 @@
     <!-- ========== OVERLAY: Tous les achievements ========== -->
     <div id="overlay-all-achievements" class="overlay">
       <div class="overlay-header">
-        <h2>🎖️ Tous les Succès</h2>
-        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-all-achievements')">✕</button>
+        <h2>Tous les Succès</h2>
+        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-all-achievements')"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <div class="achievements-progress-bar">
@@ -355,7 +380,7 @@
     <div id="overlay-edit-profile" class="overlay">
       <div class="overlay-header">
         <h2>Modifier le Profil</h2>
-        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-edit-profile')">✕</button>
+        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-edit-profile')"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <div class="edit-profile-emoji-section">
@@ -378,7 +403,7 @@
     <div id="overlay-exercise-chart" class="overlay">
       <div class="overlay-header">
         <h2 id="chart-exercise-title">Évolution</h2>
-        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-exercise-chart')">✕</button>
+        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-exercise-chart')"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <!-- Sélecteur de période -->

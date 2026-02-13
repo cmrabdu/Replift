@@ -1,6 +1,11 @@
 'use strict';
 
-const APP_VERSION = '1.3.2';
+const APP_VERSION = '1.4.0';
+
+// SVG icon helper — returns inline <svg> referencing the sprite
+function _ic(name, cls) {
+  return '<svg class="icon' + (cls ? ' ' + cls : '') + '"><use href="#i-' + name + '"/></svg>';
+}
 
 // ================================================================
 // DATA LAYER — Single source of truth via localStorage
@@ -1440,10 +1445,10 @@ const AppUI = {
     div.innerHTML =
       '<div class="exercise-block-header">' +
         '<input type="text" class="form-input" id="exo-name-' + idx + '" placeholder="Nom de l\'exercice" value="' + (data ? this.escAttr(data.nom || '') : '') + '">' +
-        '<button class="exercise-remove" onclick="document.getElementById(\'exercise-block-' + idx + '\').remove()">&#10005;</button>' +
+        '<button class="exercise-remove" onclick="document.getElementById(\'exercise-block-' + idx + '\').remove()">' + _ic('x') + '</button>' +
       '</div>' +
       '<div class="exercise-rest-config">' +
-        '<label class="rest-config-label">⏱ Repos</label>' +
+        '<label class="rest-config-label">' + _ic('clock', 'icon--sm') + ' Repos</label>' +
         '<select class="rest-config-select" data-rest-time>' +
           '<option value="30"' + (restTime == 30 ? ' selected' : '') + '>30s</option>' +
           '<option value="60"' + (restTime == 60 ? ' selected' : '') + '>1 min</option>' +
@@ -1463,7 +1468,7 @@ const AppUI = {
         '<span class="series-num">' + serieNum + '</span>' +
         '<input type="number" placeholder="kg" value="' + (poids || '') + '" data-type="poids">' +
         '<input type="number" placeholder="reps" value="' + (reps || '') + '" data-type="reps">' +
-        '<button class="series-delete" onclick="this.parentElement.remove()">&#10005;</button>' +
+        '<button class="series-delete" onclick="this.parentElement.remove()">' + _ic('x') + '</button>' +
       '</div>'
     );
   },
@@ -1600,8 +1605,8 @@ const AppUI = {
             '<span class="series-num">' + (i + 1) + '</span>' +
             '<input type="number" placeholder="' + placeholderPoids + '" data-type="poids"' + (ghostPoids ? ' class="ghost"' : '') + '>' +
             '<input type="number" placeholder="' + placeholderReps + '" data-type="reps"' + (ghostReps ? ' class="ghost"' : '') + '>' +
-            '<button class="rest-trigger" onclick="AppUI.startRestTimer(' + restTime + ', this)" title="Repos ' + restTime + 's">⏱</button>' +
-            '<button class="series-delete" onclick="AppUI.deleteSeriesRow(this)">&#10005;</button>' +
+            '<button class="rest-trigger" onclick="AppUI.startRestTimer(' + restTime + ', this)" title="Repos ' + restTime + 's">' + _ic('clock') + '</button>' +
+            '<button class="series-delete" onclick="AppUI.deleteSeriesRow(this)">' + _ic('x') + '</button>' +
           '</div>' +
           '<input type="text" class="note-input" placeholder="Note (optionnel)" maxlength="100">';
       }
@@ -1626,8 +1631,8 @@ const AppUI = {
         '<span class="series-num">' + num + '</span>' +
         '<input type="number" placeholder="kg" data-type="poids">' +
         '<input type="number" placeholder="reps" data-type="reps">' +
-        '<button class="rest-trigger" onclick="AppUI.startRestTimer(' + restTime + ', this)" title="Repos ' + restTime + 's">⏱</button>' +
-        '<button class="series-delete" onclick="AppUI.deleteSeriesRow(this)">&#10005;</button>' +
+        '<button class="rest-trigger" onclick="AppUI.startRestTimer(' + restTime + ', this)" title="Repos ' + restTime + 's">' + _ic('clock') + '</button>' +
+        '<button class="series-delete" onclick="AppUI.deleteSeriesRow(this)">' + _ic('x') + '</button>' +
       '</div>' +
       '<input type="text" class="note-input" placeholder="Note (optionnel)" maxlength="100">';
     btn.insertAdjacentHTML('beforebegin', html);
@@ -1796,7 +1801,7 @@ const AppUI = {
         const poidsStr = s.poids ? s.poids + ' kg' : 'PDC';
         html += '<div class="detail-series"><span>Série ' + (i + 1) + '</span><span>' + poidsStr + '</span><span>' + s.reps + ' reps</span></div>';
         if (s.note) {
-          html += '<div class="detail-note">📝 ' + this.esc(s.note) + '</div>';
+          html += '<div class="detail-note">' + _ic('file-text', 'icon--sm') + ' ' + this.esc(s.note) + '</div>';
         }
       });
       html += '</div>';
@@ -1872,7 +1877,7 @@ const AppUI = {
       evolutionHTML = '<div class="empty-state"><p>Pas assez de données</p><p class="text-muted">Il faut au moins 2 séances par exercice</p></div>';
     } else {
       evolutionExercises.forEach(ex => {
-        const trendIcon = ex.trend === 'up' ? '⬆️' : ex.trend === 'down' ? '⬇️' : '➡️';
+        const trendIcon = ex.trend === 'up' ? _ic('chevron-up') : ex.trend === 'down' ? _ic('chevron-down') : _ic('minus');
         const trendClass = 'evolution-trend-' + ex.trend;
 
         evolutionHTML +=
@@ -2239,7 +2244,7 @@ const AppUI = {
       achievements.slice(0, 4).forEach(a => {
         previewHTML +=
           '<div class="achievement-mini locked">' +
-            '<div class="achievement-mini-icon">🔒</div>' +
+            '<div class="achievement-mini-icon">' + _ic('lock') + '</div>' +
             '<div class="achievement-mini-title">' + a.title + '</div>' +
           '</div>';
       });
@@ -2282,12 +2287,12 @@ const AppUI = {
       const isEarned = a.earned;
       html +=
         '<div class="achievement-full ' + (isEarned ? 'earned' : 'locked') + '">' +
-          '<div class="achievement-full-icon">' + (isEarned ? a.icon : '🔒') + '</div>' +
+          '<div class="achievement-full-icon">' + (isEarned ? a.icon : _ic('lock')) + '</div>' +
           '<div class="achievement-full-info">' +
             '<div class="achievement-full-title">' + a.title + '</div>' +
             '<div class="achievement-full-desc">' + a.desc + '</div>' +
             (isEarned
-              ? '<div class="achievement-full-status earned">✅ Débloqué</div>'
+              ? '<div class="achievement-full-status earned">' + _ic('check', 'icon--sm') + ' Débloqué</div>'
               : '<div class="achievement-full-status locked">Objectif : ' + a.req + '</div>'
             ) +
           '</div>' +
@@ -2402,8 +2407,8 @@ const AppUI = {
             '<span class="series-num">' + (i + 1) + '</span>' +
             '<input type="number" placeholder="kg" value="' + (serie.poids || '') + '" data-type="poids">' +
             '<input type="number" placeholder="reps" value="' + (serie.reps || '') + '" data-type="reps">' +
-            '<button class="rest-trigger" onclick="AppUI.startRestTimer(' + restTime + ', this)" title="Repos ' + restTime + 's">⏱</button>' +
-            '<button class="series-delete" onclick="AppUI.deleteSeriesRow(this)">&#10005;</button>' +
+            '<button class="rest-trigger" onclick="AppUI.startRestTimer(' + restTime + ', this)" title="Repos ' + restTime + 's">' + _ic('clock') + '</button>' +
+            '<button class="series-delete" onclick="AppUI.deleteSeriesRow(this)">' + _ic('x') + '</button>' +
           '</div>' +
           '<input type="text" class="note-input" placeholder="Note (optionnel)" value="' + AppUI.escAttr(serie.note || '') + '" maxlength="100">';
       });
