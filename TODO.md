@@ -64,6 +64,107 @@
 
 ---
 
+## ✅ Fait — v1.1.1 (11 Fév 2026)
+
+### Bugfixes Critiques Mobile
+- [x] **Swipe-to-close refonte complète** : listeners sur `.overlay-header` uniquement
+  - Empêche fermeture accidentelle lors du scroll ou typing dans inputs
+  - Threshold augmenté 120px → 180px
+  - Détection horizontale (>30px cancels swipe)
+  - Animation smooth exit avec translateY(100%)
+  - Handler touchcancel ajouté
+- [x] **Chart tooltip listener stacking fix** : bind-once pattern avec flag `_chartBound`
+  - Data refs stockées sur canvas (`_cData`)
+  - Helpers `_findChartHit()` et `_showChartTip()`
+  - Plus de listeners dupliqués lors re-render/changement période
+- [x] closeOverlay() hide tooltip automatiquement (cleanup cohérent)
+- [x] Swipe dismiss route via closeOverlay() au lieu de classList direct
+
+---
+
+## 🚀 En Cours — v1.2.0 : Publication iOS App Store
+
+### Setup Technique (11 Fév 2026) ✅
+- [x] Installation Capacitor (@capacitor/core, @capacitor/cli, @capacitor/ios)
+- [x] Initialisation projet : `npx cap init RepLift com.replift.app`
+- [x] Configuration `capacitor.config.json` (webDir: www/)
+- [x] Création dossier `www/` pour build Capacitor
+- [x] Scripts npm automatisés (`npm run sync`)
+- [x] .gitignore mis à jour (www/, ios/, android/)
+- [x] Guide complet IOS_SETUP.md créé
+
+### Avant Publication App Store ⏳
+- [ ] **Compte Apple Developer créé + validé** (99$/an, 24-48h validation)
+- [ ] **Icône app 1024x1024px** générée (icon.kitchen ou design custom)
+- [ ] Splash screen iOS créé
+- [ ] Privacy Policy rédigée (URL obligatoire App Store)
+
+### Sur Mac Loué (MacInCloud 25$/mois ou trial 24h) 📅
+- [ ] Installer Xcode + accepter licences
+- [ ] Cloner repo GitHub sur Mac
+- [ ] `npm install` + `npm run open:ios`
+- [ ] Configuration signing & certificats Apple
+- [ ] Ajout icônes + splash dans Assets.xcassets
+- [ ] Premier build test simulateur iPhone
+- [ ] Archive + upload vers App Store Connect
+- [ ] Setup Codemagic (CI/CD gratuit pour builds futurs)
+
+### App Store Connect 🏪
+- [ ] Créer fiche app (nom, description, mots-clés)
+- [ ] Screenshots 3 tailles obligatoires (6.7", 6.5", 5.5")
+- [ ] Catégorie : Santé & Fitness
+- [ ] Privacy Policy URL
+- [ ] Soumission pour review (attente 1-5 jours)
+
+### Post-Publication 🎯
+- [ ] Cancel MacInCloud après setup Codemagic
+- [ ] Push updates via Codemagic (500 min/mois gratuit)
+- [ ] Monitoring reviews + feedback users
+
+---
+
+## ✅ Fait — v1.3.0 : Améliorations UX Terrain (13 Fév 2026)
+
+### 🔴 P0 — Critique : Persistance session active
+**Problème :** iOS PWA tue l'app en background → perte complète de la séance en cours  
+**Solution :**
+- [x] Auto-save session active dans localStorage toutes les 5s
+- [x] Détection session en cours au reload (DOMContentLoaded)
+- [x] Popup "Reprendre séance" ou "Abandonner" au démarrage
+- [x] Migration modèle : `activeSession` dans store principal
+
+### 🟠 P1 — Navigation pendant séance
+**Problème :** Overlay full-screen bloque la navigation (impossible consulter stats/profil pendant séance)  
+**Solution :**
+- [x] Bouton "Minimiser" dans active-session overlay
+- [x] Badge "Séance en cours" sur FAB (dot orange + durée)
+- [x] Tap FAB → rouvre la session minimisée
+- [x] Session continue en arrière-plan jusqu'à "Terminer" explicite
+
+### 🟡 P2 — Timer de repos par série
+**Problème :** Pas de chrono pour gérer les temps de repos entre séries  
+**Solution :**
+- [x] Bouton ⏱ sur chaque série pour lancer le timer
+- [x] Barre de progression avec compteur + bouton "Passer"
+- [x] Vibration à la fin du timer (200ms pattern)
+- [x] Config temps de repos par exercice dans les programmes (30s/1min/1m30/2min/3min)
+- [x] Stockage config dans modèle exercice : `{ nom, series, restTime: 90 }`
+
+### 🟡 P2 — Notes par série
+**Problème :** Impossible d'annoter les séries (ressenti, difficulté, ajustements)  
+**Solution :**
+- [x] Champ `note` dans modèle série : `{ poids, reps, note: "Difficile" }`
+- [x] Input texte optionnel sous chaque série dans active-session
+- [x] Affichage notes dans session-detail (historique) avec icône 📝
+- [x] Auto-save notes dans captureActiveSessionState + resume
+
+### 🟢 P3 — UI Polish
+**Problème :** Badge exercices trop longs (noms peuvent faire 40+ caractères)  
+**Solution :**
+- [x] Limiter noms à 18 caractères max avec ellipsis (…) dans badge
+
+---
+
 ## 🎯 À Faire — Prochaines versions
 
 ### UX & Interface
@@ -76,8 +177,8 @@
 - [ ] Scroll position préservée après retour overlay
 
 ### Fonctionnalités Séances
-- [ ] Chronomètre de repos entre séries (timer dédié par série)
-- [ ] Notes par exercice/séance (commentaire libre)
+- [x] ~~Chronomètre de repos entre séries~~ → Timer intégré par série (v1.3.0)
+- [x] ~~Notes par exercice/séance~~ → Notes par série (v1.3.0)
 - [ ] Photos de progression (avant/après)
 - [ ] Superset : lier 2 exercices consécutifs
 - [ ] Historique des 3 dernières séances visible pendant session active

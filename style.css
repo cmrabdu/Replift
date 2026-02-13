@@ -1392,6 +1392,30 @@ header .header-brand {
               inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
+.fab-icon {
+  display: block;
+}
+
+.fab-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ff6b35;
+  color: white;
+  font-size: 0.65em;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.5);
+  white-space: nowrap;
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
 /* === Overlays === */
 .overlay {
   display: none;
@@ -1457,6 +1481,29 @@ header .header-brand {
 }
 
 .overlay-close:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.overlay-minimize {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 1.8em;
+  line-height: 0.5;
+  cursor: pointer;
+  padding: 10px;
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  margin-right: 8px;
+}
+
+.overlay-minimize:hover {
   color: var(--color-text);
   background: rgba(255, 255, 255, 0.05);
 }
@@ -1717,6 +1764,148 @@ header .header-brand {
   text-transform: uppercase;
 }
 
+/* === Rest Timer Config (programme form) === */
+.exercise-rest-config {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.rest-config-label {
+  color: var(--color-text-subtle);
+  font-size: var(--font-sm);
+  white-space: nowrap;
+}
+
+.rest-config-select {
+  padding: 6px 10px;
+  background: #222;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 16px;
+  outline: none;
+  min-height: var(--touch-min);
+}
+
+.rest-config-select:focus {
+  border-color: var(--color-border-hover);
+}
+
+/* === Rest Timer Trigger Button (active session) === */
+.rest-trigger {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  font-size: 1em;
+  padding: 4px 8px;
+  min-width: 36px;
+  min-height: var(--touch-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.rest-trigger:hover,
+.rest-trigger:active {
+  color: var(--color-text);
+  border-color: var(--color-border-hover);
+  background: var(--color-surface-alt);
+}
+
+/* === Rest Timer Bar (countdown between sets) === */
+.rest-timer-bar {
+  display: none;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 8px 12px;
+  margin: 4px 0 8px 0;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  animation: fadeInRestTimer 0.3s ease;
+}
+
+@keyframes fadeInRestTimer {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rest-timer-progress {
+  flex: 1;
+  height: 6px;
+  background: #222;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.rest-timer-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+  border-radius: 3px;
+  transition: width 1s linear;
+}
+
+.rest-timer-display {
+  color: var(--color-text);
+  font-size: var(--font-md);
+  font-weight: bold;
+  min-width: 48px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.rest-timer-skip {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  padding: 4px 10px;
+  font-size: var(--font-sm);
+  min-height: var(--touch-min);
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.rest-timer-skip:hover,
+.rest-timer-skip:active {
+  color: var(--color-text);
+  border-color: var(--color-border-hover);
+}
+
+/* === Note Input (active session) === */
+.note-input {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  margin: 2px 0 10px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--color-text-subtle);
+  font-size: var(--font-xs);
+  outline: none;
+  transition: border-color 0.2s, color 0.2s;
+  box-sizing: border-box;
+}
+
+.note-input:focus {
+  border-bottom-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.note-input::placeholder {
+  color: var(--color-text-dim);
+  opacity: 0.5;
+}
+
 /* === Session Detail === */
 .detail-exercise {
   margin-bottom: var(--space-lg);
@@ -1741,6 +1930,13 @@ header .header-brand {
 
 .detail-series span {
   min-width: 50px;
+}
+
+.detail-note {
+  padding: 2px 0 6px 16px;
+  color: var(--color-text-dim);
+  font-size: var(--font-xs);
+  font-style: italic;
 }
 
 /* === Utilities === */

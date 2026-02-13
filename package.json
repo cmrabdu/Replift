@@ -1,0 +1,24 @@
+{
+  "name": "replift",
+  "version": "1.1.1",
+  "description": "RepLift - App de suivi musculation",
+  "main": "index.html",
+  "scripts": {
+    "copy": "cp index.html app.js style.css www/",
+    "sync": "npm run copy && npx cap sync ios",
+    "open:ios": "npx cap open ios"
+  },
+  "keywords": [
+    "fitness",
+    "workout",
+    "tracker",
+    "musculation"
+  ],
+  "author": "RepLift",
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/cli": "^8.0.2",
+    "@capacitor/core": "^8.0.2",
+    "@capacitor/ios": "^8.0.2"
+  }
+}

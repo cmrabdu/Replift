@@ -1,0 +1,9 @@
+{
+  "appId": "com.replift.app",
+  "appName": "RepLift",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "ios": {
+    "contentInset": "always"
+  }
+}

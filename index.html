@@ -228,7 +228,10 @@
           <div class="nav-item-label">Stats</div>
         </div>
         <div class="nav-fab">
-          <button onclick="AppUI.openStartSession()">+</button>
+          <button id="fab-button" onclick="AppUI.handleFabClick()">
+            <span class="fab-icon">+</span>
+            <span id="fab-badge" class="fab-badge" style="display: none;"></span>
+          </button>
         </div>
         <div class="nav-item" onclick="AppUI.switchPage(event, 'seance')">
           <div class="nav-item-icon">&#128170;</div>
@@ -279,6 +282,7 @@
     <div id="overlay-active-session" class="overlay">
       <div class="overlay-header">
         <h2 id="active-session-title">Seance en cours</h2>
+        <button class="overlay-minimize" onclick="AppUI.minimizeSession()" title="Minimiser">_</button>
         <button class="overlay-close" onclick="AppUI.confirmCloseSession()">&#10005;</button>
       </div>
       <div class="overlay-content">

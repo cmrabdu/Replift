@@ -49,6 +49,11 @@ dist/
 build/
 *.tsbuildinfo
 
+# Capacitor
+www/
+ios/
+android/
+
 # Temporary files
 tmp/
 temp/

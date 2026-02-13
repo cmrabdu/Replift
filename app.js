@@ -1,6 +1,6 @@
 'use strict';
 
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.3.0';
 
 // ================================================================
 // DATA LAYER — Single source of truth via localStorage
@@ -10,7 +10,7 @@ const AppData = {
   _cache: null,
 
   getDefaultData() {
-    return { version: APP_VERSION, programs: [], sessions: [], user: { name: '' }, recentAchievements: [] };
+    return { version: APP_VERSION, programs: [], sessions: [], user: { name: '' }, recentAchievements: [], activeSession: null };
   },
 
   load() {
@@ -54,6 +54,29 @@ const AppData = {
     localStorage.removeItem(this.STORAGE_KEY);
     localStorage.removeItem('replift_recent_achievements');
     this._cache = null;
+  },
+
+  // --- Active Session (auto-save for PWA persistence) ---
+  saveActiveSession(sessionData) {
+    const data = this.load();
+    data.activeSession = {
+      programId: sessionData.programId,
+      programName: sessionData.programName,
+      startTime: sessionData.startTime || Date.now(),
+      exercises: sessionData.exercises || []
+    };
+    this.save(data);
+  },
+
+  loadActiveSession() {
+    const data = this.load();
+    return data.activeSession;
+  },
+
+  clearActiveSession() {
+    const data = this.load();
+    data.activeSession = null;
+    this.save(data);
   },
 
   // --- Programmes ---
@@ -909,6 +932,24 @@ const AppUI = {
   // --- Session Timer ---
   _sessionTimerInterval: null,
   _sessionTimerStart: null,
+  _autoSaveInterval: null,
+
+  // --- Rest Timer ---
+  _restTimerInterval: null,
+  _restTimerRemaining: 0,
+  _restTimerTotal: 0,
+
+  /** Remove a series row and its associated note-input sibling */
+  deleteSeriesRow(btn) {
+    const row = btn.closest('.series-row');
+    if (!row) return;
+    const next = row.nextElementSibling;
+    if (next && next.classList.contains('note-input')) next.remove();
+    // Also remove rest-timer-bar if it follows the note
+    const nextAfter = row.nextElementSibling;
+    if (nextAfter && nextAfter.classList.contains('rest-timer-bar')) nextAfter.remove();
+    row.remove();
+  },
 
   startSessionTimer() {
     this.stopSessionTimer();
@@ -932,6 +973,130 @@ const AppUI = {
     }
     var el = document.getElementById('session-timer-value');
     if (el) el.textContent = '00:00';
+  },
+
+  // --- Auto-save active session (PWA persistence) ---
+  startAutoSave() {
+    this.stopAutoSave();
+    var self = this;
+    this._autoSaveInterval = setInterval(function() {
+      self.captureActiveSessionState();
+    }, 5000); // Every 5 seconds
+  },
+
+  stopAutoSave() {
+    if (this._autoSaveInterval) {
+      clearInterval(this._autoSaveInterval);
+      this._autoSaveInterval = null;
+    }
+  },
+
+  // --- Rest Timer Between Sets ---
+  startRestTimer(seconds, triggerBtn) {
+    this.stopRestTimer();
+    this._restTimerTotal = seconds;
+    this._restTimerRemaining = seconds;
+
+    // Find or create the rest-timer-bar after the note-input (which follows series-row)
+    const seriesRow = triggerBtn.closest('.series-row');
+    // note-input is the next sibling after series-row
+    let noteEl = seriesRow.nextElementSibling;
+    let insertAfter = (noteEl && noteEl.classList.contains('note-input')) ? noteEl : seriesRow;
+    let bar = insertAfter.nextElementSibling;
+    if (!bar || !bar.classList.contains('rest-timer-bar')) {
+      bar = document.createElement('div');
+      bar.className = 'rest-timer-bar';
+      bar.innerHTML =
+        '<div class="rest-timer-progress"><div class="rest-timer-fill"></div></div>' +
+        '<span class="rest-timer-display"></span>' +
+        '<button class="rest-timer-skip" onclick="AppUI.skipRestTimer()">Passer ▶</button>';
+      insertAfter.insertAdjacentElement('afterend', bar);
+    }
+    bar.style.display = 'flex';
+    this._activeRestBar = bar;
+
+    var self = this;
+    var display = bar.querySelector('.rest-timer-display');
+    var fill = bar.querySelector('.rest-timer-fill');
+
+    function tick() {
+      if (self._restTimerRemaining <= 0) {
+        self.onRestTimerComplete();
+        return;
+      }
+      var m = Math.floor(self._restTimerRemaining / 60);
+      var s = self._restTimerRemaining % 60;
+      display.textContent = (m > 0 ? m + ':' : '') + s.toString().padStart(2, '0');
+      var pct = ((self._restTimerTotal - self._restTimerRemaining) / self._restTimerTotal) * 100;
+      fill.style.width = pct + '%';
+      self._restTimerRemaining--;
+    }
+
+    tick();
+    this._restTimerInterval = setInterval(tick, 1000);
+  },
+
+  stopRestTimer() {
+    if (this._restTimerInterval) {
+      clearInterval(this._restTimerInterval);
+      this._restTimerInterval = null;
+    }
+    if (this._activeRestBar) {
+      this._activeRestBar.style.display = 'none';
+      this._activeRestBar = null;
+    }
+  },
+
+  skipRestTimer() {
+    this.stopRestTimer();
+    this.showToast('Repos passé');
+  },
+
+  onRestTimerComplete() {
+    clearInterval(this._restTimerInterval);
+    this._restTimerInterval = null;
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    if (this._activeRestBar) {
+      var fill = this._activeRestBar.querySelector('.rest-timer-fill');
+      var display = this._activeRestBar.querySelector('.rest-timer-display');
+      if (fill) fill.style.width = '100%';
+      if (display) display.textContent = 'Terminé !';
+      var bar = this._activeRestBar;
+      this._activeRestBar = null;
+      setTimeout(function() { bar.style.display = 'none'; }, 2000);
+    }
+    this.showToast('Repos terminé !');
+  },
+
+  captureActiveSessionState() {
+    if (!this.currentSessionProgramId) return;
+    
+    const container = document.getElementById('active-session-exercises');
+    if (!container) return;
+    
+    const exercises = [];
+    container.querySelectorAll('.active-exercise').forEach(function(block) {
+      const nom = block.dataset.exoName;
+      const series = [];
+      block.querySelectorAll('.series-row').forEach(function(row) {
+        const poidsInput = row.querySelector('[data-type="poids"]');
+        const repsInput = row.querySelector('[data-type="reps"]');
+        const noteEl = row.nextElementSibling;
+        const poids = poidsInput ? poidsInput.value : '';
+        const reps = repsInput ? repsInput.value : '';
+        const note = (noteEl && noteEl.classList.contains('note-input')) ? noteEl.value : '';
+        series.push({ poids: poids, reps: reps, note: note });
+      });
+      exercises.push({ nom: nom, series: series });
+    });
+
+    const program = AppData.getProgramById(this.currentSessionProgramId);
+    AppData.saveActiveSession({
+      programId: this.currentSessionProgramId,
+      programName: program ? program.nom : 'Inconnu',
+      startTime: this._sessionTimerStart || Date.now(),
+      exercises: exercises
+    });
   },
 
   // --- Greeting ---
@@ -1172,7 +1337,10 @@ const AppUI = {
     container.innerHTML = programs.map(p => {
       const exCount = (p.exercices || []).length;
       const sessCount = AppData.getSessions().filter(s => s.programId === p.id).length;
-      const badge = (p.exercices || []).map(e => e.nom).filter(Boolean).slice(0, 2).join(', ') || 'Vide';
+      const badge = (p.exercices || []).map(e => {
+        const n = e.nom || '';
+        return n.length > 18 ? n.substring(0, 16) + '…' : n;
+      }).filter(Boolean).slice(0, 2).join(', ') || 'Vide';
       return (
         '<div class="card" onclick="AppUI.openEditProgram(\'' + this.escAttr(p.id) + '\')">' +
           '<div class="card-row">' +
@@ -1261,10 +1429,22 @@ const AppUI = {
       seriesHTML += this.seriesRowHTML(idx, i + 1, series[i].poids, series[i].reps);
     }
 
+    const restTime = (data && data.restTime) ? data.restTime : 90;
+
     div.innerHTML =
       '<div class="exercise-block-header">' +
         '<input type="text" class="form-input" id="exo-name-' + idx + '" placeholder="Nom de l\'exercice" value="' + (data ? this.escAttr(data.nom || '') : '') + '">' +
         '<button class="exercise-remove" onclick="document.getElementById(\'exercise-block-' + idx + '\').remove()">&#10005;</button>' +
+      '</div>' +
+      '<div class="exercise-rest-config">' +
+        '<label class="rest-config-label">⏱ Repos</label>' +
+        '<select class="rest-config-select" data-rest-time>' +
+          '<option value="30"' + (restTime == 30 ? ' selected' : '') + '>30s</option>' +
+          '<option value="60"' + (restTime == 60 ? ' selected' : '') + '>1 min</option>' +
+          '<option value="90"' + (restTime == 90 ? ' selected' : '') + '>1m30</option>' +
+          '<option value="120"' + (restTime == 120 ? ' selected' : '') + '>2 min</option>' +
+          '<option value="180"' + (restTime == 180 ? ' selected' : '') + '>3 min</option>' +
+        '</select>' +
       '</div>' +
       '<div id="series-container-' + idx + '">' + seriesHTML + '</div>' +
       '<button class="add-link" onclick="AppUI.addSeriesToExercise(' + idx + ')">+ Ajouter une série</button>';
@@ -1297,6 +1477,8 @@ const AppUI = {
     const exercices = [];
     blocks.forEach(block => {
       const nameInput = block.querySelector('input[type="text"]');
+      const restSelect = block.querySelector('[data-rest-time]');
+      const restTime = restSelect ? Number(restSelect.value) : 90;
       const seriesRows = block.querySelectorAll('.series-row');
       const series = [];
       seriesRows.forEach(row => {
@@ -1305,7 +1487,7 @@ const AppUI = {
         series.push({ poids: poids ? Number(poids) : '', reps: reps ? Number(reps) : '' });
       });
       if (nameInput.value.trim()) {
-        exercices.push({ nom: nameInput.value.trim(), series });
+        exercices.push({ nom: nameInput.value.trim(), series, restTime });
       }
     });
 
@@ -1329,6 +1511,16 @@ const AppUI = {
   },
 
   // --- Démarrer session (bouton +) ---
+  handleFabClick() {
+    // If session is active, resume it
+    if (this.currentSessionProgramId && AppData.loadActiveSession()) {
+      this.openOverlay('overlay-active-session');
+      if (navigator.vibrate) navigator.vibrate(10);
+    } else {
+      this.openStartSession();
+    }
+  },
+
   openStartSession() {
     if (navigator.vibrate) navigator.vibrate(10);
     const programs = AppData.getPrograms();
@@ -1377,7 +1569,9 @@ const AppUI = {
         1
       );
 
-      let html = '<div class="active-exercise" data-exo-name="' + this.escAttr(exo.nom) + '">' +
+      const restTime = exo.restTime || 90;
+
+      let html = '<div class="active-exercise" data-exo-name="' + this.escAttr(exo.nom) + '" data-rest-time="' + restTime + '">' +
         '<div class="active-exercise-name">' + this.esc(exo.nom) + '</div>';
 
       if (ghostExo) {
@@ -1400,8 +1594,10 @@ const AppUI = {
             '<span class="series-num">' + (i + 1) + '</span>' +
             '<input type="number" placeholder="' + placeholderPoids + '" data-type="poids"' + (ghostPoids ? ' class="ghost"' : '') + '>' +
             '<input type="number" placeholder="' + placeholderReps + '" data-type="reps"' + (ghostReps ? ' class="ghost"' : '') + '>' +
-            '<button class="series-delete" onclick="this.parentElement.remove()">&#10005;</button>' +
-          '</div>';
+            '<button class="rest-trigger" onclick="AppUI.startRestTimer(' + restTime + ', this)" title="Repos ' + restTime + 's">⏱</button>' +
+            '<button class="series-delete" onclick="AppUI.deleteSeriesRow(this)">&#10005;</button>' +
+          '</div>' +
+          '<input type="text" class="note-input" placeholder="Note (optionnel)" maxlength="100">';
       }
 
       html += '<button class="add-link" onclick="AppUI.addActiveSeriesRow(this)">+ Série</button></div>';
@@ -1410,10 +1606,13 @@ const AppUI = {
 
     this.openOverlay('overlay-active-session');
     this.startSessionTimer();
+    this.startAutoSave();
+    this.updateFabBadge();
   },
 
   addActiveSeriesRow(btn) {
     const exercise = btn.closest('.active-exercise');
+    const restTime = exercise.dataset.restTime || 90;
     const rows = exercise.querySelectorAll('.series-row');
     const num = rows.length + 1;
     const html =
@@ -1421,8 +1620,10 @@ const AppUI = {
         '<span class="series-num">' + num + '</span>' +
         '<input type="number" placeholder="kg" data-type="poids">' +
         '<input type="number" placeholder="reps" data-type="reps">' +
-        '<button class="series-delete" onclick="this.parentElement.remove()">&#10005;</button>' +
-      '</div>';
+        '<button class="rest-trigger" onclick="AppUI.startRestTimer(' + restTime + ', this)" title="Repos ' + restTime + 's">⏱</button>' +
+        '<button class="series-delete" onclick="AppUI.deleteSeriesRow(this)">&#10005;</button>' +
+      '</div>' +
+      '<input type="text" class="note-input" placeholder="Note (optionnel)" maxlength="100">';
     btn.insertAdjacentHTML('beforebegin', html);
   },
 
@@ -1434,13 +1635,19 @@ const AppUI = {
     exerciseBlocks.forEach(block => {
       const nom = block.dataset.exoName;
       const series = [];
-      block.querySelectorAll('.series-row').forEach(row => {
+      const rows = block.querySelectorAll('.series-row');
+      rows.forEach(row => {
         const poidsInput = row.querySelector('[data-type="poids"]');
         const repsInput = row.querySelector('[data-type="reps"]');
         const poids = poidsInput.value;
         const reps = repsInput.value;
+        // Note input is the next sibling of the series-row
+        const noteEl = row.nextElementSibling;
+        const note = (noteEl && noteEl.classList.contains('note-input')) ? noteEl.value.trim() : '';
         if (poids && reps) {
-          series.push({ poids: Number(poids), reps: Number(reps) });
+          const entry = { poids: Number(poids), reps: Number(reps) };
+          if (note) entry.note = note;
+          series.push(entry);
         }
       });
       if (series.length > 0) exercices.push({ nom, series });
@@ -1456,6 +1663,9 @@ const AppUI = {
     });
 
     this.stopSessionTimer();
+    this.stopAutoSave();
+    this.stopRestTimer();
+    AppData.clearActiveSession();
     this.closeOverlay('overlay-active-session');
     this.updateDashboard();
     this.updateHistorique();
@@ -1464,12 +1674,42 @@ const AppUI = {
     }
     this.updateProfile();
     this.showToast('Séance sauvegardée !');
+    this.updateFabBadge();
+  },
+
+  minimizeSession() {
+    this.captureActiveSessionState(); // Save before minimize
+    this.closeOverlay('overlay-active-session');
+    this.updateFabBadge();
+    this.showToast('Séance en cours minimisée');
+  },
+
+  updateFabBadge() {
+    const badge = document.getElementById('fab-badge');
+    const fabIcon = document.querySelector('.fab-icon');
+    if (!badge || !fabIcon) return;
+
+    const activeSession = AppData.loadActiveSession();
+    if (activeSession && this.currentSessionProgramId) {
+      const elapsed = Math.floor((Date.now() - activeSession.startTime) / 1000);
+      const minutes = Math.floor(elapsed / 60);
+      badge.textContent = minutes + 'min';
+      badge.style.display = 'block';
+      fabIcon.textContent = '▶'; // Play icon
+    } else {
+      badge.style.display = 'none';
+      fabIcon.textContent = '+';
+    }
   },
 
   confirmCloseSession() {
     if (confirm('Abandonner la séance en cours ?')) {
       this.stopSessionTimer();
+      this.stopAutoSave();
+      this.stopRestTimer();
+      AppData.clearActiveSession();
       this.closeOverlay('overlay-active-session');
+      this.updateFabBadge();
     }
   },
 
@@ -1549,6 +1789,9 @@ const AppUI = {
       (ex.series || []).forEach((s, i) => {
         const poidsStr = s.poids ? s.poids + ' kg' : 'PDC';
         html += '<div class="detail-series"><span>Série ' + (i + 1) + '</span><span>' + poidsStr + '</span><span>' + s.reps + ' reps</span></div>';
+        if (s.note) {
+          html += '<div class="detail-note">📝 ' + this.esc(s.note) + '</div>';
+        }
       });
       html += '</div>';
     });
@@ -2092,6 +2335,76 @@ const AppUI = {
     this.showToast('Profil mis à jour');
   },
 
+  // --- Active Session Recovery (PWA persistence) ---
+  checkActiveSession() {
+    const activeSession = AppData.loadActiveSession();
+    if (!activeSession) return;
+
+    const elapsed = Math.floor((Date.now() - activeSession.startTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const msg = 'Séance en cours détectée :\n' + activeSession.programName + 
+                '\nDurée : ' + minutes + ' min\n\nVoulez-vous la reprendre ?';
+
+    if (confirm(msg)) {
+      this.resumeActiveSession(activeSession);
+    } else {
+      AppData.clearActiveSession();
+    }
+  },
+
+  resumeActiveSession(activeSession) {
+    this.currentSessionProgramId = activeSession.programId;
+    const program = AppData.getProgramById(activeSession.programId);
+    if (!program) {
+      this.showToast('Programme introuvable');
+      AppData.clearActiveSession();
+      return;
+    }
+
+    document.getElementById('active-session-title').textContent = activeSession.programName;
+    const container = document.getElementById('active-session-exercises');
+    container.innerHTML = '';
+
+    // Rebuild UI from saved data
+    activeSession.exercises.forEach(function(savedExo) {
+      // Look up restTime from program template
+      var programExo = (program.exercices || []).find(function(e) { return e.nom === savedExo.nom; });
+      var restTime = (programExo && programExo.restTime) ? programExo.restTime : 90;
+
+      let html = '<div class="active-exercise" data-exo-name="' + AppUI.escAttr(savedExo.nom) + '" data-rest-time="' + restTime + '">' +
+        '<div class="active-exercise-name">' + AppUI.esc(savedExo.nom) + '</div>' +
+        '<div class="series-header"><span></span><span>Poids (kg)</span><span>Reps</span><span></span></div>';
+
+      savedExo.series.forEach(function(serie, i) {
+        html +=
+          '<div class="series-row">' +
+            '<span class="series-num">' + (i + 1) + '</span>' +
+            '<input type="number" placeholder="kg" value="' + (serie.poids || '') + '" data-type="poids">' +
+            '<input type="number" placeholder="reps" value="' + (serie.reps || '') + '" data-type="reps">' +
+            '<button class="rest-trigger" onclick="AppUI.startRestTimer(' + restTime + ', this)" title="Repos ' + restTime + 's">⏱</button>' +
+            '<button class="series-delete" onclick="AppUI.deleteSeriesRow(this)">&#10005;</button>' +
+          '</div>' +
+          '<input type="text" class="note-input" placeholder="Note (optionnel)" value="' + AppUI.escAttr(serie.note || '') + '" maxlength="100">';
+      });
+
+      html += '<button class="add-link" onclick="AppUI.addActiveSeriesRow(this)">+ Série</button></div>';
+      container.insertAdjacentHTML('beforeend', html);
+    });
+
+    // Restore timer
+    this._sessionTimerStart = activeSession.startTime;
+    const elapsed = Math.floor((Date.now() - activeSession.startTime) / 1000);
+    const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
+    const s = (elapsed % 60).toString().padStart(2, '0');
+    document.getElementById('session-timer-value').textContent = m + ':' + s;
+
+    this.openOverlay('overlay-active-session');
+    this.startSessionTimer();
+    this.startAutoSave();
+    this.showToast('Séance reprise !');
+    this.updateFabBadge();
+  },
+
   // --- Export / Import / Reset ---
   exportData() {
     try {
@@ -2280,4 +2593,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Setup swipe-to-close on overlays
   AppUI.setupSwipeToClose();
+
+  // Check for active session (PWA persistence)
+  AppUI.checkActiveSession();
 });
