@@ -1,6 +1,6 @@
 'use strict';
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 
 // SVG icon helper — returns inline <svg> referencing the sprite
 function _ic(name, cls) {
@@ -1171,9 +1171,14 @@ const AppUI = {
         if (diff > 180) {
           overlay.style.transform = 'translateY(100%)';
           setTimeout(function() {
-            AppUI.closeOverlay(overlay.id);
+            // Skip animation — swipe already moved it off-screen
+            overlay.classList.remove('active');
+            overlay.classList.remove('overlay--dismissing');
             overlay.style.transform = '';
             overlay.style.transition = '';
+            var bd = document.getElementById('overlay-backdrop');
+            bd.classList.remove('active');
+            bd.onclick = null;
           }, 300);
         } else {
           overlay.style.transform = '';
@@ -2165,10 +2170,31 @@ const AppUI = {
 
   // --- Overlays ---
   openOverlay(id) {
-    document.getElementById(id).classList.add('active');
+    const el = document.getElementById(id);
+    el.classList.remove('overlay--dismissing');
+    el.classList.add('active');
+    // Show backdrop for sheets
+    if (el.classList.contains('overlay--sheet')) {
+      const bd = document.getElementById('overlay-backdrop');
+      bd.classList.add('active');
+      bd.onclick = function() { AppUI.closeOverlay(id); };
+    }
   },
   closeOverlay(id) {
-    document.getElementById(id).classList.remove('active');
+    const el = document.getElementById(id);
+    if (!el.classList.contains('active')) return;
+    // Animate out
+    el.classList.add('overlay--dismissing');
+    el.classList.remove('active');
+    const onEnd = function() {
+      el.classList.remove('overlay--dismissing');
+      el.removeEventListener('animationend', onEnd);
+    };
+    el.addEventListener('animationend', onEnd);
+    // Hide backdrop
+    const bd = document.getElementById('overlay-backdrop');
+    bd.classList.remove('active');
+    bd.onclick = null;
     // Hide chart tooltip if closing the chart overlay
     if (id === 'overlay-exercise-chart') {
       var tip = document.getElementById('chart-tooltip');

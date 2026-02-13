@@ -43,41 +43,45 @@
 
       <!-- ========== Dashboard Page ========== -->
       <div id="dashboard" class="page active">
-        <div class="stats-grid">
-          <div class="stat-card dark-1">
-            <div class="stat-card-icon"><svg class="icon"><use href="#i-calendar"/></svg></div>
-            <div class="stat-card-label">Séances ce mois</div>
-            <div class="stat-card-value" id="stat-month">0</div>
+        <!-- Hero Metrics -->
+        <div class="dash-hero">
+          <div class="hero-card hero-card--primary">
+            <div class="hero-label">Volume ce mois</div>
+            <div class="hero-value hero-value--primary" id="stat-volume-month">0 kg</div>
           </div>
-          <div class="stat-card dark-2">
-            <div class="stat-card-icon"><svg class="icon"><use href="#i-dumbbell"/></svg></div>
-            <div class="stat-card-label">Volume ce mois</div>
-            <div class="stat-card-value" id="stat-volume-month">0 kg</div>
+          <div class="hero-card hero-card--accent">
+            <div class="hero-label">Progression 30j</div>
+            <div class="hero-value hero-value--accent" id="stat-progression">-</div>
           </div>
-          <div class="stat-card dark-3">
-            <div class="stat-card-icon"><svg class="icon"><use href="#i-trending-up"/></svg></div>
-            <div class="stat-card-label">Progression 30j</div>
-            <div class="stat-card-value" id="stat-progression">-</div>
+          <div class="hero-card hero-card--warm">
+            <div class="hero-label">Série hebdo</div>
+            <div class="hero-value hero-value--warm" id="stat-weekly-streak">0</div>
           </div>
-          <div class="stat-card dark-4">
-            <div class="stat-card-icon"><svg class="icon"><use href="#i-award"/></svg></div>
-            <div class="stat-card-label">PRs ce mois</div>
-            <div class="stat-card-value" id="stat-prs-month">0</div>
+        </div>
+
+        <!-- Secondary Stats -->
+        <div class="dash-secondary">
+          <div class="dash-stat">
+            <svg class="icon"><use href="#i-calendar"/></svg>
+            <span class="dash-stat-label">Séances</span>
+            <span class="dash-stat-value" id="stat-month">0</span>
           </div>
-          <div class="stat-card dark-5">
-            <div class="stat-card-icon"><svg class="icon"><use href="#i-clock"/></svg></div>
-            <div class="stat-card-label">Dernière séance</div>
-            <div class="stat-card-value" id="stat-last-session">-</div>
+          <div class="dash-stat">
+            <svg class="icon"><use href="#i-award"/></svg>
+            <span class="dash-stat-label">PRs</span>
+            <span class="dash-stat-value" id="stat-prs-month">0</span>
           </div>
-          <div class="stat-card dark-6">
-            <div class="stat-card-icon"><svg class="icon"><use href="#i-flame"/></svg></div>
-            <div class="stat-card-label">Série hebdo</div>
-            <div class="stat-card-value" id="stat-weekly-streak">0</div>
+          <div class="dash-stat">
+            <svg class="icon"><use href="#i-clock"/></svg>
+            <span class="dash-stat-label">Dernière</span>
+            <span class="dash-stat-value" id="stat-last-session">-</span>
           </div>
-          <div class="stat-card large dark-1">
-            <div class="stat-card-label stat-card-label--activity">Activité</div>
-            <div id="heatmap-container" class="heatmap-container"></div>
-          </div>
+        </div>
+
+        <!-- Activity Calendar -->
+        <div class="dash-activity">
+          <div class="dash-activity-label">Activité</div>
+          <div id="heatmap-container" class="heatmap-container"></div>
         </div>
       </div>
 
@@ -269,6 +273,9 @@
       </div>
     </div>
 
+    <!-- Sheet backdrop (for bottom-sheet overlays) -->
+    <div id="overlay-backdrop" class="overlay-backdrop"></div>
+
     <!-- ========== OVERLAY: Creer un programme ========== -->
     <div id="overlay-create-program" class="overlay">
       <div class="overlay-header">
@@ -292,7 +299,7 @@
     </div>
 
     <!-- ========== OVERLAY: Recovery session ========== -->
-    <div id="overlay-recovery" class="overlay">
+    <div id="overlay-recovery" class="overlay overlay--sheet">
       <div class="overlay-header">
         <h2>Seance interrompue</h2>
         <button class="overlay-close" onclick="AppUI.discardRecovery()"><svg class="icon"><use href="#i-x"/></svg></button>
@@ -317,7 +324,7 @@
     </div>
 
     <!-- ========== OVERLAY: Selectionner programme (bouton +) ========== -->
-    <div id="overlay-select-program" class="overlay">
+    <div id="overlay-select-program" class="overlay overlay--sheet">
       <div class="overlay-header">
         <h2>Demarrer une seance</h2>
         <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-select-program')"><svg class="icon"><use href="#i-x"/></svg></button>
