@@ -75,7 +75,6 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   padding-bottom: calc(var(--navbar-height) + var(--safe-bottom) + 10px);
-  padding-top: var(--safe-top);
   color: var(--color-text);
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
@@ -91,6 +90,7 @@ body {
   position: relative;
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
+  padding-top: calc(44px + var(--safe-top));
 }
 
 /* === Pages === */
@@ -111,15 +111,17 @@ body {
 
 /* === Header === */
 header {
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.95);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   color: white;
   padding: 12px var(--space-md);
   padding-top: calc(12px + var(--safe-top));
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 40;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   display: flex;
@@ -1796,51 +1798,87 @@ header .header-brand {
 /* === Rest Timer Trigger Button (active session) === */
 .rest-trigger {
   background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-subtle);
+  border: none;
+  color: var(--color-text-dim);
   cursor: pointer;
-  font-size: 1em;
-  padding: 4px 8px;
-  min-width: 36px;
+  font-size: 1.1em;
+  padding: 4px 6px;
+  min-width: 32px;
   min-height: var(--touch-min);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.2s;
+  transition: color 0.2s;
 }
 
-.rest-trigger:hover,
 .rest-trigger:active {
-  color: var(--color-text);
-  border-color: var(--color-border-hover);
-  background: var(--color-surface-alt);
+  color: #4ade80;
 }
 
 /* === Rest Timer Bar (countdown between sets) === */
 .rest-timer-bar {
   display: none;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: 8px 12px;
-  margin: 4px 0 8px 0;
-  background: var(--color-surface-alt);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  margin: 6px 0 12px 0;
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.08), rgba(34, 197, 94, 0.04));
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  border-radius: var(--radius-lg);
   animation: fadeInRestTimer 0.3s ease;
 }
 
 @keyframes fadeInRestTimer {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.rest-timer-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rest-timer-display {
+  color: #4ade80;
+  font-size: 1.6em;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}
+
+.rest-timer-label {
+  color: var(--color-text-subtle);
+  font-size: var(--font-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rest-timer-skip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 6px 14px;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  min-height: var(--touch-min);
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.rest-timer-skip:active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
 }
 
 .rest-timer-progress {
-  flex: 1;
-  height: 6px;
-  background: #222;
-  border-radius: 3px;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
   overflow: hidden;
 }
 
@@ -1848,36 +1886,8 @@ header .header-brand {
   height: 100%;
   width: 0%;
   background: linear-gradient(90deg, #4ade80, #22c55e);
-  border-radius: 3px;
+  border-radius: 2px;
   transition: width 1s linear;
-}
-
-.rest-timer-display {
-  color: var(--color-text);
-  font-size: var(--font-md);
-  font-weight: bold;
-  min-width: 48px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-.rest-timer-skip {
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-subtle);
-  cursor: pointer;
-  padding: 4px 10px;
-  font-size: var(--font-sm);
-  min-height: var(--touch-min);
-  white-space: nowrap;
-  transition: all 0.2s;
-}
-
-.rest-timer-skip:hover,
-.rest-timer-skip:active {
-  color: var(--color-text);
-  border-color: var(--color-border-hover);
 }
 
 /* === Note Input (active session) === */
@@ -1904,6 +1914,92 @@ header .header-brand {
 .note-input::placeholder {
   color: var(--color-text-dim);
   opacity: 0.5;
+}
+
+/* === Recovery Overlay === */
+.recovery-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.recovery-icon {
+  font-size: 2.2em;
+  flex-shrink: 0;
+}
+
+.recovery-info {
+  min-width: 0;
+}
+
+.recovery-program {
+  font-size: var(--font-md);
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recovery-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.recovery-duration-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  background: rgba(74, 222, 128, 0.12);
+  color: #4ade80;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  border-radius: 20px;
+}
+
+.recovery-details {
+  color: var(--color-text-subtle);
+  font-size: var(--font-xs);
+}
+
+.recovery-description {
+  color: var(--color-text-muted);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+  margin-bottom: var(--space-xl);
+}
+
+.recovery-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  padding: 12px var(--space-lg);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-base);
+  font-weight: 500;
+  cursor: pointer;
+  min-height: var(--touch-min);
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.btn-ghost:active {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
 }
 
 /* === Session Detail === */

@@ -266,6 +266,31 @@
       </div>
     </div>
 
+    <!-- ========== OVERLAY: Recovery session ========== -->
+    <div id="overlay-recovery" class="overlay">
+      <div class="overlay-header">
+        <h2>Seance interrompue</h2>
+        <button class="overlay-close" onclick="AppUI.discardRecovery()">&#10005;</button>
+      </div>
+      <div class="overlay-content">
+        <div class="recovery-card">
+          <div class="recovery-icon">💪</div>
+          <div class="recovery-info">
+            <div class="recovery-program" id="recovery-program-name">-</div>
+            <div class="recovery-meta">
+              <span class="recovery-duration-badge" id="recovery-duration">-</span>
+              <span class="recovery-details" id="recovery-details">-</span>
+            </div>
+          </div>
+        </div>
+        <p class="recovery-description">Une seance en cours a ete detectee. Souhaites-tu la reprendre la ou tu t'es arrete ?</p>
+        <div class="recovery-actions">
+          <button class="btn btn-white" onclick="AppUI.resumeFromRecovery()">Reprendre la seance</button>
+          <button class="btn btn-ghost" onclick="AppUI.discardRecovery()">Abandonner</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ========== OVERLAY: Selectionner programme (bouton +) ========== -->
     <div id="overlay-select-program" class="overlay">
       <div class="overlay-header">

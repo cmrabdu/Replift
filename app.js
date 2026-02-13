@@ -1,6 +1,6 @@
 'use strict';
 
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 
 // ================================================================
 // DATA LAYER — Single source of truth via localStorage
@@ -951,13 +951,17 @@ const AppUI = {
     row.remove();
   },
 
-  startSessionTimer() {
+  startSessionTimer(savedStartTime) {
     this.stopSessionTimer();
-    this._sessionTimerStart = Date.now();
+    this._sessionTimerStart = savedStartTime || Date.now();
     var self = this;
     var el = document.getElementById('session-timer-value');
     if (!el) return;
-    el.textContent = '00:00';
+    // Show current elapsed immediately
+    var initElapsed = Math.floor((Date.now() - self._sessionTimerStart) / 1000);
+    var im = Math.floor(initElapsed / 60).toString().padStart(2, '0');
+    var is = (initElapsed % 60).toString().padStart(2, '0');
+    el.textContent = im + ':' + is;
     this._sessionTimerInterval = setInterval(function() {
       var elapsed = Math.floor((Date.now() - self._sessionTimerStart) / 1000);
       var m = Math.floor(elapsed / 60).toString().padStart(2, '0');
@@ -1007,9 +1011,11 @@ const AppUI = {
       bar = document.createElement('div');
       bar.className = 'rest-timer-bar';
       bar.innerHTML =
-        '<div class="rest-timer-progress"><div class="rest-timer-fill"></div></div>' +
-        '<span class="rest-timer-display"></span>' +
-        '<button class="rest-timer-skip" onclick="AppUI.skipRestTimer()">Passer ▶</button>';
+        '<div class="rest-timer-top">' +
+          '<div><div class="rest-timer-display"></div><div class="rest-timer-label">Repos</div></div>' +
+          '<button class="rest-timer-skip" onclick="AppUI.skipRestTimer()">Passer</button>' +
+        '</div>' +
+        '<div class="rest-timer-progress"><div class="rest-timer-fill"></div></div>';
       insertAfter.insertAdjacentElement('afterend', bar);
     }
     bar.style.display = 'flex';
@@ -2342,14 +2348,29 @@ const AppUI = {
 
     const elapsed = Math.floor((Date.now() - activeSession.startTime) / 1000);
     const minutes = Math.floor(elapsed / 60);
-    const msg = 'Séance en cours détectée :\n' + activeSession.programName + 
-                '\nDurée : ' + minutes + ' min\n\nVoulez-vous la reprendre ?';
 
-    if (confirm(msg)) {
-      this.resumeActiveSession(activeSession);
-    } else {
-      AppData.clearActiveSession();
-    }
+    // Build recovery overlay content
+    const overlay = document.getElementById('overlay-recovery');
+    document.getElementById('recovery-program-name').textContent = activeSession.programName;
+    document.getElementById('recovery-duration').textContent = minutes + ' min';
+    const exCount = (activeSession.exercises || []).length;
+    const seriesCount = (activeSession.exercises || []).reduce(function(t, e) { return t + (e.series || []).length; }, 0);
+    document.getElementById('recovery-details').textContent = exCount + ' exercice(s), ' + seriesCount + ' série(s)';
+
+    this.openOverlay('overlay-recovery');
+  },
+
+  resumeFromRecovery() {
+    const activeSession = AppData.loadActiveSession();
+    if (!activeSession) return;
+    this.closeOverlay('overlay-recovery');
+    this.resumeActiveSession(activeSession);
+  },
+
+  discardRecovery() {
+    AppData.clearActiveSession();
+    this.closeOverlay('overlay-recovery');
+    this.showToast('Séance abandonnée');
   },
 
   resumeActiveSession(activeSession) {
@@ -2391,15 +2412,9 @@ const AppUI = {
       container.insertAdjacentHTML('beforeend', html);
     });
 
-    // Restore timer
-    this._sessionTimerStart = activeSession.startTime;
-    const elapsed = Math.floor((Date.now() - activeSession.startTime) / 1000);
-    const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
-    const s = (elapsed % 60).toString().padStart(2, '0');
-    document.getElementById('session-timer-value').textContent = m + ':' + s;
-
+    // Restore timer — continue from where it left off
     this.openOverlay('overlay-active-session');
-    this.startSessionTimer();
+    this.startSessionTimer(activeSession.startTime);
     this.startAutoSave();
     this.showToast('Séance reprise !');
     this.updateFabBadge();
