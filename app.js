@@ -1,6 +1,6 @@
 'use strict';
 
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.3.2';
 
 // ================================================================
 // DATA LAYER — Single source of truth via localStorage
@@ -1335,8 +1335,8 @@ const AppUI = {
       container.innerHTML =
         '<div class="empty-state">' +
           '<div class="empty-state-icon">&#128170;</div>' +
-          '<p>Aucun programme</p>' +
-          '<p class="text-muted">Crée ton premier programme d\'entraînement</p>' +
+          '<p>Crée ton premier programme</p>' +
+          '<p class="text-muted">Commence par définir tes exercices favoris</p>' +
         '</div>';
       return;
     }
@@ -1534,8 +1534,8 @@ const AppUI = {
     if (!programs.length) {
       container.innerHTML =
         '<div class="empty-state">' +
-          '<p>Aucun programme créé</p>' +
-          '<p class="text-muted">Crée un programme dans l\'onglet Séance d\'abord</p>' +
+          '<p>Crée ton premier programme</p>' +
+          '<p class="text-muted">Va dans Séances → Programmes pour commencer</p>' +
         '</div>';
     } else {
       container.innerHTML = programs.map(p => {
@@ -1727,8 +1727,8 @@ const AppUI = {
       container.innerHTML =
         '<div class="empty-state">' +
           '<div class="empty-state-icon">&#128203;</div>' +
-          '<p>Aucune séance effectuée</p>' +
-          '<p class="text-muted">Appuie sur + pour démarrer</p>' +
+          '<p>Commence ta première séance !</p>' +
+          '<p class="text-muted">Appuie sur + pour démarrer ton entraînement</p>' +
         '</div>';
       return;
     }
@@ -1759,7 +1759,7 @@ const AppUI = {
 
     currentSessions.forEach(s => {
       const date = new Date(s.date);
-      const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+      const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
       const exCount = (s.exercices || []).length;
       let totalSeries = 0;
       (s.exercices || []).forEach(ex => { totalSeries += (ex.series || []).length; });
