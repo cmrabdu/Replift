@@ -4,18 +4,19 @@
 
 RepLift est une application web minimaliste et performante pour suivre vos performances en musculation, séance après séance. Conçue mobile-first avec une interface dark élégante.
 
-**📦 État actuel** : ✅ **Production Ready** — v1.1.0 (11 Février 2026)
+**📦 État actuel** : ✅ **Production Ready** — v1.6.0 (15 Février 2026)
 
 ---
 
 ## 🎯 Aperçu Rapide
 
-- **3 fichiers** : HTML (397L) + CSS (2215L) + JS (2243L) = 4855 lignes totales
+- **3 fichiers** : HTML (644L) + CSS (~2400L) + JS (2915L) = ~5959 lignes totales
 - **Zero dépendances** : Vanilla JavaScript, pas de build, pas de framework
-- **Fonctionnel à 100%** : Programmes, sessions, historique, stats avancées, graphiques, achievements
+- **Fonctionnel à 100%** : Programmes, sessions, historique, stats avancées, graphiques, achievements, onboarding
 - **Performance optimale** : Cache mémoire, memoization stats, localStorage, rendu Canvas
 - **Mobile-first** : Pensé pour utilisation en salle de sport
 - **Code quality** : Architecture en couches, strict mode, protection XSS, null-safe DOM
+- **PWA-ready** : Configuration Capacitor pour déploiement iOS/Android
 
 ---
 
@@ -23,8 +24,8 @@ RepLift est une application web minimaliste et performante pour suivre vos perfo
 
 RepLift utilise **Semantic Versioning** : `MAJOR.MINOR.PATCH`
 
-### Version actuelle : **v1.1.0**
-*Dernière mise à jour : 11 Février 2026*
+### Version actuelle : **v1.6.0**
+*Dernière mise à jour : 15 Février 2026*
 
 ### Règles d'incrémentation
 
@@ -65,6 +66,63 @@ Nouvelles **fonctionnalités** sans casser l'existant :
 | Refonte complète en React | v1.2.0 | v2.0.0 | Breaking change = MAJOR |
 
 ### Changelog
+
+**v1.6.0** — 15 Février 2026
+
+*Feature majeure — Onboarding complet pour nouveaux utilisateurs*
+
+**Nouvelles fonctionnalités**
+- ✨ **Onboarding interactif** complet pour première utilisation (6 écrans)
+  - Écran 0 : Accueil et présentation
+  - Écran 1 : Sélection objectif (Force, Hypertrophie, Endurance, Général, Perte de poids)
+  - Écran 2 : Niveau d'expérience (Débutant, Intermédiaire, Avancé)
+  - Écran 3 : Profil personnalisé (nom, avatar emoji avec grille de 28 emojis)
+  - Écran 4 : Fréquence d'entraînement (1-7 séances/semaine avec compteur)
+  - Écran 5 : Recommandation de programmes starter adaptés au profil
+- ✨ Génération automatique de **programmes starter** selon profil utilisateur
+  - Débutant Force : Full Body 3x (3 séances/semaine)
+  - Intermédiaire Force : Upper/Lower Split (4 séances)
+  - Avancé Force : PPL 6x (6 séances)
+  - Hypertrophie : programmes adaptés par niveau
+  - Endurance : circuits et HIIT
+- ✨ Navigation onboarding fluide (Suivant/Retour/Passer)
+- ✨ Indicateur de progression par écran (step indicator)
+- ✨ Stockage préférences user avec flag `onboardingDone`
+- ✨ Grille emojis interactive avec sélection visuelle
+
+**Améliorations UX/UI**
+- 🎨 Design onboarding moderne avec animations slide
+- 🎨 Cards de choix avec hover states et feedback sélection
+- 🎨 Compteur fréquence avec boutons +/- stylisés
+- 🎨 Avatar preview live pendant la sélection
+
+**Architecture**
+- ⚡ Méthodes AppUI : `checkOnboarding()`, `showOnboarding()`, `updateObScreen()`
+- ⚡ Gestion state onboarding : `obStep`, `obData` avec validation
+- ⚡ Génération programmes conditionnelle selon profil
+- ⚡ Migration données user avec flag `onboardingDone`
+
+---
+
+**v1.1.1** — 12 Février 2026
+
+*Correctif critique — Bugfixes mobile UX*
+
+**Corrections de bugs**
+- 🐛 **Swipe-to-close refonte complète** : listeners sur `.overlay-header` uniquement
+  - Empêche fermeture accidentelle lors du scroll ou typing dans inputs
+  - Threshold augmenté 120px → 180px pour geste plus intentionnel
+  - Détection horizontale (>30px cancels swipe) pour éviter faux positifs
+  - Animation smooth exit avec translateY(100%)
+  - Handler `touchcancel` ajouté pour cleanup
+- 🐛 **Chart tooltip listener stacking fix** : bind-once pattern avec flag `_chartBound`
+  - Data refs stockées sur canvas (`_cData`) pour éviter re-bind
+  - Helpers `_findChartHit()` et `_showChartTip()` dédiés
+  - Plus de listeners dupliqués lors re-render/changement période
+- 🐛 `closeOverlay()` hide tooltip automatiquement (cleanup cohérent)
+- 🐛 Swipe dismiss route via `closeOverlay()` au lieu de classList direct
+
+---
 
 **v1.1.0** — 11 Février 2026
 
@@ -139,6 +197,7 @@ Nouvelles **fonctionnalités** sans casser l'existant :
 ## ✨ Fonctionnalités
 
 ### 🎯 Core Features
+- **Onboarding interactif** : Personnalisation profil et génération programmes starter (première utilisation)
 - **Programmes personnalisables** : Création, modification, duplication, suppression (avec ou sans séances associées)
 - **Sessions avec Ghost Data** : Démarrage de séance avec affichage des performances précédentes en transparence
 - **Timer de session** : Chronomètre live mm:ss pendant l'entraînement
@@ -190,11 +249,18 @@ Nouvelles **fonctionnalités** sans casser l'existant :
 ### Structure des Fichiers
 ```
 RepLift/
-├── index.html      (397 lignes)  — Structure HTML, 7 overlays
-├── style.css       (2215 lignes) — Styles complets, dark theme, glassmorphism, responsive
-├── app.js          (2243 lignes) — Logique en 3 couches, memoization, toast, timer
-├── README.md       — Documentation complète
-└── TODO.md         — Roadmap et backlog
+├── index.html         (644 lignes)  — Structure HTML, 8 overlays + onboarding
+├── style.css          (~2400 lignes) — Styles complets, dark theme, glassmorphism, responsive
+├── app.js             (2915 lignes) — Logique en 3 couches, onboarding, memoization, toast, timer
+├── capacitor.config.json — Configuration Capacitor (iOS/Android)
+├── package.json       — Dépendances Capacitor
+├── README.md          — Documentation complète
+├── TODO.md            — Roadmap et backlog
+├── EXPLICATIONS.md    — Guide technique Capacitor
+├── IOS_SETUP.md       — Guide déploiement iOS
+├── ONBOARDING.md      — Spécifications onboarding
+├── www/               — Build Capacitor (HTML/CSS/JS copiés)
+└── ios/               — Projet Xcode natif (généré par Capacitor)
 ```
 
 ### Architecture Logique (app.js)
@@ -273,10 +339,15 @@ Gestion DOM, événements, rendu visuel, overlays, toast, timer.
 - `updateStats()` : Rendu complet de la page Stats
 - `openExerciseChart()` / `drawExerciseChart()` : Graphiques Canvas avec tooltip tactile
 
-**Profil** :
+**Profil & Onboarding** :
 - `updateProfile()` : Avatar, rang, achievements, évolution
 - `openAllAchievements()` : Vue complète 18 achievements
 - `openEditProfile()` / `saveProfile()` : Édition profil
+- `checkOnboarding()` / `showOnboarding()` : Flow première utilisation
+- `onboardingNext()` / `onboardingPrev()` : Navigation écrans
+- `onboardingSelect()` / `onboardingFreq()` : Gestion sélections
+- `populateObEmojis()` / `pickObEmoji()` : Grille avatars
+- `finishOnboarding()` : Génération programmes starter + sauvegarde profil
 
 **Données** :
 - `exportData()` / `importData()` / `resetData()` / `generateTestData()`
@@ -327,7 +398,11 @@ Gestion DOM, événements, rendu visuel, overlays, toast, timer.
   "user": {
     "name": "Maxime",
     "bio": "Push Pull Legs 6x/sem",
-    "emoji": "🔥"
+    "emoji": "🔥",
+    "onboardingDone": true,
+    "goal": "hypertrophy",
+    "level": "intermediate",
+    "freq": 5
   },
   "recentAchievements": [
     { "id": "vol5k", "icon": "💪", "title": "Volume Rookie", "desc": "5 000 kg soulevés", "earned": true }
@@ -340,7 +415,7 @@ Gestion DOM, événements, rendu visuel, overlays, toast, timer.
 - **poids = 0** : Indique un exercice au poids du corps (affiché comme "PDC")
 - **IDs** : Timestamp en millisecondes pour unicité
 - **dates** : Format ISO 8601 UTC
-- **user** : Profil avec nom, bio et emoji avatar
+- **user** : Profil avec nom, bio, emoji avatar + préférences onboarding (goal, level, freq, onboardingDone)
 - **recentAchievements** : 3 derniers achievements débloqués (fusionnés dans le store principal depuis v1.1.0)
 - **Cache** : AppData maintient un cache mémoire + AppStats memoize les calculs lourds
 
@@ -450,6 +525,16 @@ L'application est **production-ready** sans build step :
 
 ## 🐛 Corrections Historiques (Février 2026)
 
+### v1.6.0 — Onboarding
+- ✅ **Première utilisation** : Flow complet pour nouveaux utilisateurs
+- ✅ **Programmes starter** : Génération automatique selon profil
+- ✅ **Emoji picker** : Grille interactive 28 emojis
+
+### v1.1.1 — Bugfixes mobile critiques
+- ✅ **Swipe-to-close** : Refonte complète des listeners, threshold augmenté, détection horizontale
+- ✅ **Chart tooltip** : Bind-once pattern pour éviter listener stacking
+- ✅ **Cleanup overlays** : Fermeture cohérente avec tooltip hide
+
 ### v1.1.0 — Audit complet
 - ✅ **saveSession** auto-remplissage fantôme (placeholder utilisé comme valeur réelle)
 - ✅ **Balance musculaire** liste Push/Pull trop courte → enrichie (22+ exercices)
@@ -476,11 +561,12 @@ L'application est **production-ready** sans build step :
 Voir [TODO.md](TODO.md) pour la liste complète des fonctionnalités prévues.
 
 ### Prochaines priorités
-1. **PWA complète** : Manifest + Service Worker pour installation mobile
-2. **Chronomètre de repos** : Timer entre séries avec notifications
-3. **Mode clair** : Toggle dark/light theme
-4. **Notes par séance** : Champ commentaire libre
-5. **Tests unitaires** : AppData et AppStats coverage
+1. **Publication App Store iOS** : Build Xcode, icônes, screenshots, soumission
+2. **PWA complète** : Manifest + Service Worker pour installation web
+3. **Chronomètre de repos** : Timer entre séries avec notifications
+4. **Mode clair** : Toggle dark/light theme
+5. **Notes par séance** : Champ commentaire libre
+6. **Tests unitaires** : AppData et AppStats coverage
 
 ---
 

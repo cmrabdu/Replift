@@ -1009,11 +1009,9 @@ const AppUI = {
   },
 
   onboardingNext() {
-    // Save profile data from screen 3 before leaving
-    if (this.obStep === 3) {
-      const nameInput = document.getElementById('ob-name');
-      if (nameInput) this.obData.name = nameInput.value.trim();
-    }
+    // Always capture name if screen 3 input exists
+    const nameInput = document.getElementById('ob-name');
+    if (nameInput) this.obData.name = nameInput.value.trim();
 
     if (this.obStep < 5) {
       this.obStep++;
@@ -1043,7 +1041,7 @@ const AppUI = {
       const step = parseInt(d.dataset.step);
       d.classList.remove('active', 'done');
       if (step === this.obStep) d.classList.add('active');
-      else if (step < this.obStep) d.classList.add('done');
+      if (step < this.obStep) d.classList.add('done');
     });
   },
 
@@ -1138,7 +1136,7 @@ const AppUI = {
         if (t) {
           AppData.addProgram({
             nom: t.name,
-            exercices: t.exercises.map(e => ({ nom: e, repos: 90 })),
+            exercices: t.exercises.map(e => ({ nom: e, series: [{ poids: 0, reps: 10 }, { poids: 0, reps: 10 }, { poids: 0, reps: 10 }], restTime: 90 })),
           });
         }
       });
@@ -1154,11 +1152,6 @@ const AppUI = {
     this.updateProfile();
 
     this.showToast('Bienvenue sur RepLift ! 🚀');
-
-    // Open program select if user chose programs
-    if (this.obData.selectedPrograms.length > 0) {
-      setTimeout(() => this.openStartSession(), 500);
-    }
   },
 
   // --- Helpers ---
@@ -1187,16 +1180,13 @@ const AppUI = {
   // --- Toast ---
   showToast(msg, duration) {
     duration = duration || 3000;
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.textContent = msg;
-    container.appendChild(toast);
-    requestAnimationFrame(function() { toast.classList.add('show'); });
-    setTimeout(function() {
-      toast.classList.remove('show');
-      setTimeout(function() { toast.remove(); }, 300);
+    const el = document.getElementById('app-toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(function() {
+      el.classList.remove('show');
     }, duration);
   },
 
