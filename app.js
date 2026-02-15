@@ -1,6 +1,6 @@
 'use strict';
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.6.0';
 
 // SVG icon helper — returns inline <svg> referencing the sprite
 function _ic(name, cls) {
@@ -390,6 +390,8 @@ const AppStats = {
     const prs = this.getPersonalRecords().length;
 
     return [
+      // Welcome
+      { id: 'welcome', icon: '🚀', title: 'Welcome to RepLift', desc: 'Rejoindre la communauté', earned: (AppData.load().user || {}).onboardingDone === true, req: 'Onboarding' },
       // Débutant
       { id: 'first', icon: '🎯', title: 'Première Séance', desc: 'Commencer le voyage', earned: sessions >= 1, req: '1 séance' },
       { id: 'five', icon: '✋', title: 'Cinq de Plus', desc: '5 séances complétées', earned: sessions >= 5, req: '5 séances' },
@@ -894,6 +896,270 @@ const AppUI = {
 
   // Current calendar month offset (0 = current month, -1 = last month, etc.)
   calendarOffset: 0,
+
+  // --- Onboarding state ---
+  obStep: 0,
+  obData: { goal: null, level: null, name: '', emoji: '🏋️', freq: 3, selectedPrograms: [] },
+
+  // ================================================================
+  // ONBOARDING
+  // ================================================================
+  PROGRAM_TEMPLATES: {
+    strength: {
+      beginner: [
+        { name: 'Force — Debutant', icon: '🛡️', exercises: ['Squat', 'Développé couché', 'Rowing barre', 'Soulevé de terre', 'Développé militaire'], desc: '5 exos fondamentaux · 3x/sem' },
+      ],
+      intermediate: [
+        { name: 'Force 5×5', icon: '🛡️', exercises: ['Squat', 'Développé couché', 'Rowing barre', 'Soulevé de terre', 'Développé militaire', 'Tractions'], desc: '6 exos · séries lourdes · 4x/sem' },
+      ],
+      advanced: [
+        { name: 'Powerlifting', icon: '🛡️', exercises: ['Squat', 'Développé couché', 'Soulevé de terre', 'Squat pause', 'Développé incliné', 'Good morning', 'Rowing barre'], desc: '7 exos · periodisation · 4-5x/sem' },
+      ],
+    },
+    hypertrophy: {
+      beginner: [
+        { name: 'Hypertrophie — Debutant', icon: '💪', exercises: ['Développé couché', 'Curl biceps', 'Extensions triceps', 'Presse à cuisses', 'Élévations latérales', 'Crunch'], desc: '6 exos variés · 3x/sem' },
+      ],
+      intermediate: [
+        { name: 'Push Pull Legs', icon: '💪', exercises: ['Développé couché', 'Développé incliné', 'Élévations latérales', 'Extensions triceps', 'Tractions', 'Rowing haltères', 'Curl biceps', 'Squat', 'Presse à cuisses', 'Leg curl'], desc: '10 exos · split PPL · 4-5x/sem' },
+      ],
+      advanced: [
+        { name: 'Bro Split Volume', icon: '💪', exercises: ['Développé couché', 'Écarté poulie', 'Développé incliné', 'Tractions', 'Rowing T-bar', 'Tirage poulie', 'Développé militaire', 'Élévations latérales', 'Squat', 'Leg press', 'Curl biceps', 'Extensions triceps'], desc: '12 exos · haut volume · 5x/sem' },
+      ],
+    },
+    endurance: {
+      beginner: [
+        { name: 'Endurance — Debutant', icon: '⚡', exercises: ['Squat goblet', 'Pompes', 'Rowing haltères', 'Fentes', 'Planche', 'Mountain climbers'], desc: '6 exos · haute reps · 3x/sem' },
+      ],
+      intermediate: [
+        { name: 'Circuit Training', icon: '⚡', exercises: ['Burpees', 'Kettlebell swing', 'Box jump', 'Rowing haltères', 'Pompes', 'Squat sauté', 'Planche', 'Corde à sauter'], desc: '8 exos · circuit · 4x/sem' },
+      ],
+      advanced: [
+        { name: 'HIIT + Muscu', icon: '⚡', exercises: ['Clean & press', 'Snatch haltère', 'Thrusters', 'Burpees', 'Kettlebell swing', 'Box jump', 'Rameur', 'Battle rope'], desc: '8 exos · intensif · 5x/sem' },
+      ],
+    },
+    general: {
+      beginner: [
+        { name: 'Full Body — Debutant', icon: '🎯', exercises: ['Squat', 'Développé couché', 'Rowing haltères', 'Fentes', 'Planche', 'Curl biceps'], desc: '6 exos complets · 3x/sem' },
+      ],
+      intermediate: [
+        { name: 'Full Body Intermediate', icon: '🎯', exercises: ['Squat', 'Développé couché', 'Tractions', 'Soulevé de terre roumain', 'Développé militaire', 'Rowing barre', 'Curl biceps', 'Extensions triceps'], desc: '8 exos · full body · 3-4x/sem' },
+      ],
+      advanced: [
+        { name: 'Upper / Lower Split', icon: '🎯', exercises: ['Développé couché', 'Rowing barre', 'Développé militaire', 'Tractions', 'Curl biceps', 'Squat', 'Soulevé de terre', 'Presse à cuisses', 'Leg curl', 'Mollets'], desc: '10 exos · upper/lower · 4x/sem' },
+      ],
+    },
+    weightloss: {
+      beginner: [
+        { name: 'Fat Burn — Debutant', icon: '🔥', exercises: ['Squat goblet', 'Pompes', 'Fentes marchées', 'Planche', 'Mountain climbers', 'Jumping jacks'], desc: '6 exos · cardio-muscu · 3-4x/sem' },
+      ],
+      intermediate: [
+        { name: 'Metabolic Training', icon: '🔥', exercises: ['Thrusters', 'Burpees', 'Kettlebell swing', 'Rowing haltères', 'Squat sauté', 'Pompes', 'Corde à sauter', 'Planche'], desc: '8 exos · métabolique · 4x/sem' },
+      ],
+      advanced: [
+        { name: 'Shred Programme', icon: '🔥', exercises: ['Clean & press', 'Burpees', 'Thrusters', 'Box jump', 'Rowing barre', 'Squat', 'Battle rope', 'Sprint rameur', 'Kettlebell snatch'], desc: '9 exos · haute intensité · 5x/sem' },
+      ],
+    },
+  },
+
+  checkOnboarding() {
+    const data = AppData.load();
+    if (!data.user || !data.user.onboardingDone) {
+      this.showOnboarding();
+    }
+  },
+
+  showOnboarding() {
+    this.obStep = 0;
+    this.obData = { goal: null, level: null, name: '', emoji: '🏋️', freq: 3, selectedPrograms: [] };
+    document.getElementById('onboarding').classList.add('active');
+    this.updateObScreen();
+    this.populateObEmojis();
+  },
+
+  populateObEmojis() {
+    const emojis = ['🏋️','💪','🔥','⚡','🏆','🎯','🦾','🐺','🦁','🐻','🦅','🚀','💎','👊','🥊','🏅','⭐','🌟','🎖️','🧠','🫀','🦿','🏃','🤸','🧘','🥇','✨','💯'];
+    const grid = document.getElementById('ob-emoji-grid');
+    grid.innerHTML = emojis.map(e =>
+      '<button class="ob-emoji-btn' + (e === this.obData.emoji ? ' selected' : '') + '" type="button" onclick="AppUI.pickObEmoji(this, \'' + e + '\')">' + e + '</button>'
+    ).join('');
+  },
+
+  pickObEmoji(btn, emoji) {
+    this.obData.emoji = emoji;
+    document.getElementById('ob-avatar').textContent = emoji;
+    document.querySelectorAll('.ob-emoji-btn.selected').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  },
+
+  onboardingSelect(btn, type) {
+    const container = btn.closest('.ob-choices');
+    container.querySelectorAll('.ob-choice').forEach(c => c.classList.remove('selected'));
+    btn.classList.add('selected');
+    this.obData[type] = btn.dataset.value;
+
+    // Enable next button
+    const nextBtn = document.getElementById('ob-' + type + '-next');
+    if (nextBtn) nextBtn.disabled = false;
+  },
+
+  onboardingFreq(delta) {
+    this.obData.freq = Math.max(1, Math.min(7, this.obData.freq + delta));
+    document.getElementById('ob-freq').textContent = this.obData.freq;
+  },
+
+  onboardingNext() {
+    // Save profile data from screen 3 before leaving
+    if (this.obStep === 3) {
+      const nameInput = document.getElementById('ob-name');
+      if (nameInput) this.obData.name = nameInput.value.trim();
+    }
+
+    if (this.obStep < 5) {
+      this.obStep++;
+      this.updateObScreen();
+      // Render programs when reaching screen 4
+      if (this.obStep === 4) this.renderObPrograms();
+      // Start confetti when reaching screen 5
+      if (this.obStep === 5) this.spawnConfetti();
+    }
+  },
+
+  onboardingPrev() {
+    if (this.obStep > 0) {
+      this.obStep--;
+      this.updateObScreen();
+    }
+  },
+
+  updateObScreen() {
+    // Update screens
+    document.querySelectorAll('.ob-screen').forEach(s => s.classList.remove('active'));
+    const target = document.querySelector('.ob-screen[data-screen="' + this.obStep + '"]');
+    if (target) target.classList.add('active');
+
+    // Update dots
+    document.querySelectorAll('.ob-dot').forEach(d => {
+      const step = parseInt(d.dataset.step);
+      d.classList.remove('active', 'done');
+      if (step === this.obStep) d.classList.add('active');
+      else if (step < this.obStep) d.classList.add('done');
+    });
+  },
+
+  renderObPrograms() {
+    const goal = this.obData.goal || 'general';
+    const level = this.obData.level || 'beginner';
+    const templates = (this.PROGRAM_TEMPLATES[goal] && this.PROGRAM_TEMPLATES[goal][level])
+      || this.PROGRAM_TEMPLATES.general.beginner;
+
+    // Also add a template from a different category for variety
+    const altGoals = Object.keys(this.PROGRAM_TEMPLATES).filter(g => g !== goal);
+    const altGoal = altGoals[Math.floor(Math.random() * altGoals.length)];
+    const altTemplates = this.PROGRAM_TEMPLATES[altGoal] && this.PROGRAM_TEMPLATES[altGoal][level]
+      ? this.PROGRAM_TEMPLATES[altGoal][level] : [];
+
+    const allTemplates = [...templates, ...altTemplates.slice(0, 1)];
+
+    const container = document.getElementById('ob-programs');
+    container.innerHTML = allTemplates.map((t, i) =>
+      '<div class="ob-prog-card" data-idx="' + i + '" onclick="AppUI.selectObProgram(this, ' + i + ')">' +
+        '<div class="ob-prog-head">' +
+          '<div class="ob-prog-icon ob-feature-icon--primary">' + t.icon + '</div>' +
+          '<div>' +
+            '<div class="ob-prog-name">' + this.esc(t.name) + '</div>' +
+            '<div class="ob-prog-meta">' + this.esc(t.desc) + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="ob-prog-exercises">' +
+          t.exercises.map(e => '<span class="ob-prog-tag">' + this.esc(e) + '</span>').join('') +
+        '</div>' +
+      '</div>'
+    ).join('');
+
+    // Store templates for later use
+    this._obTemplates = allTemplates;
+  },
+
+  selectObProgram(card, idx) {
+    // Toggle selection
+    card.classList.toggle('selected');
+    const selectedIdx = this.obData.selectedPrograms.indexOf(idx);
+    if (selectedIdx === -1) {
+      this.obData.selectedPrograms.push(idx);
+    } else {
+      this.obData.selectedPrograms.splice(selectedIdx, 1);
+    }
+  },
+
+  spawnConfetti() {
+    const container = document.getElementById('ob-confetti');
+    container.innerHTML = '';
+    const colors = ['#6366f1', '#818cf8', '#4ade80', '#fbbf24', '#f87171', '#38bdf8', '#a78bfa'];
+    for (let i = 0; i < 40; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'ob-confetti-piece';
+      piece.style.left = Math.random() * 100 + '%';
+      piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.animationDelay = (Math.random() * 1.5) + 's';
+      piece.style.animationDuration = (2 + Math.random() * 1.5) + 's';
+      piece.style.width = (5 + Math.random() * 6) + 'px';
+      piece.style.height = (5 + Math.random() * 6) + 'px';
+      container.appendChild(piece);
+    }
+  },
+
+  finishOnboarding() {
+    const data = AppData.load();
+    if (!data.user) data.user = {};
+
+    // Save profile
+    data.user.name = this.obData.name || '';
+    data.user.emoji = this.obData.emoji || '🏋️';
+    data.user.goal = this.obData.goal || 'general';
+    data.user.level = this.obData.level || 'beginner';
+    data.user.freq = this.obData.freq || 3;
+    data.user.onboardingDone = true;
+
+    // Add welcome achievement
+    if (!data.recentAchievements) data.recentAchievements = [];
+    const welcomeAch = { id: 'welcome', icon: '🚀', title: 'Welcome to RepLift', desc: 'Tu as rejoint la communauté', earned: true };
+    if (!data.recentAchievements.find(a => a.id === 'welcome')) {
+      data.recentAchievements.unshift(welcomeAch);
+      data.recentAchievements = data.recentAchievements.slice(0, 3);
+    }
+
+    AppData.save(data);
+
+    // Create selected program templates
+    if (this._obTemplates && this.obData.selectedPrograms.length > 0) {
+      this.obData.selectedPrograms.forEach(idx => {
+        const t = this._obTemplates[idx];
+        if (t) {
+          AppData.addProgram({
+            nom: t.name,
+            exercices: t.exercises.map(e => ({ nom: e, repos: 90 })),
+          });
+        }
+      });
+    }
+
+    // Hide onboarding
+    document.getElementById('onboarding').classList.remove('active');
+
+    // Refresh everything
+    this.updateGreeting();
+    this.updateDashboard();
+    this.updatePrograms();
+    this.updateProfile();
+
+    this.showToast('Bienvenue sur RepLift ! 🚀');
+
+    // Open program select if user chose programs
+    if (this.obData.selectedPrograms.length > 0) {
+      setTimeout(() => this.openStartSession(), 500);
+    }
+  },
 
   // --- Helpers ---
   /** HTML-escape a string (prevents XSS in text content) */
@@ -2642,4 +2908,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Check for active session (PWA persistence)
   AppUI.checkActiveSession();
+
+  // Show onboarding if first launch
+  AppUI.checkOnboarding();
 });
