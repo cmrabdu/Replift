@@ -171,7 +171,8 @@
         <!-- Tab: Programmes -->
         <div id="tab-programmes" class="tab-content active">
           <div class="tab-header">
-            <button class="page-title-btn" onclick="AppUI.openCreateProgram()">+ Nouveau</button>
+            <button class="page-title-btn" onclick="AppUI.openCreateProgram()">+ Créer</button>
+            <button class="page-title-btn page-title-btn--secondary" onclick="AppUI.openBrowsePacks()">📦 Programmes préfaits</button>
           </div>
           <div id="programs-list"></div>
         </div>
@@ -607,7 +608,7 @@
           <h2 class="ob-screen-title">Ton Programme</h2>
           <button class="ob-skip" onclick="AppUI.onboardingNext()">Passer</button>
         </div>
-        <p class="ob-prompt">On te recommande ces programmes</p>
+        <p class="ob-prompt">On te recommande un programme complet, structuré par séances</p>
         <div class="ob-programs" id="ob-programs"></div>
         <button class="ob-btn ob-btn--primary" id="ob-prog-next" onclick="AppUI.onboardingNext()">Suivant <svg class="icon"><use href="#i-arrow-right"/></svg></button>
       </div>
@@ -628,6 +629,19 @@
           <p class="ob-celeb-sub">Ton aventure commence maintenant</p>
           <button class="ob-btn ob-btn--primary ob-btn--glow" onclick="AppUI.finishOnboarding()">Commencer ma premiere seance <svg class="icon"><use href="#i-arrow-right"/></svg></button>
         </div>
+      </div>
+    </div>
+
+    <!-- ========== OVERLAY: Browse Packs ========== -->
+    <div id="overlay-browse-packs" class="overlay">
+      <div class="overlay-header">
+        <h2>Programmes préconçus</h2>
+        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-browse-packs')"><svg class="icon"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="overlay-content">
+        <p class="text-muted mb-20">Choisis un programme structuré. Chaque séance sera ajoutée à tes programmes, modifiable à tout moment.</p>
+        <div id="browse-packs-filters"></div>
+        <div id="browse-packs-list"></div>
       </div>
     </div>
 

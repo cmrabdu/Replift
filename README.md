@@ -4,7 +4,7 @@
 
 RepLift est une application web minimaliste et performante pour suivre vos performances en musculation, séance après séance. Conçue mobile-first avec une interface dark élégante.
 
-**📦 État actuel** : ✅ **Production Ready** — v1.6.0 (15 Février 2026)
+**📦 État actuel** : ✅ **Production Ready** — v1.7.0 (15 Février 2026)
 
 ---
 
@@ -24,7 +24,7 @@ RepLift est une application web minimaliste et performante pour suivre vos perfo
 
 RepLift utilise **Semantic Versioning** : `MAJOR.MINOR.PATCH`
 
-### Version actuelle : **v1.6.0**
+### Version actuelle : **v1.7.0**
 *Dernière mise à jour : 15 Février 2026*
 
 ### Règles d'incrémentation
@@ -66,6 +66,31 @@ Nouvelles **fonctionnalités** sans casser l'existant :
 | Refonte complète en React | v1.2.0 | v2.0.0 | Breaking change = MAJOR |
 
 ### Changelog
+
+**v1.7.0** — 15 Février 2026
+
+*Feature majeure — Système de packs de programmes structurés*
+
+**Nouvelles fonctionnalités**
+- ✨ **Système de packs** : Programmes structurés en séances multiples (Push/Pull/Legs, Full Body, etc.)
+  - 15 packs professionnels organisés par catégorie (Force, Hypertrophie, Endurance, Général, Perte de poids)
+  - 3 niveaux par catégorie (Débutant, Intermédiaire, Avancé)
+  - Chaque pack contient plusieurs séances (jours) avec exercices spécifiques
+- 📦 **Overlay "Programmes préfaits"** : Parcourir et ajouter des packs depuis l'onglet Programmes
+  - Filtrage par catégorie et niveau avec chips interactifs
+  - Ajout simple d'un pack complet (crée un programme par jour)
+- 🎯 **Onboarding amélioré** : Sélection d'un pack complet au lieu de sessions individuelles
+  - Présentation visuelle des jours inclus dans chaque pack
+  - Recommandations basées sur objectif et niveau sélectionnés
+  - Création automatique de tous les programmes du pack lors de la finalisation
+
+**Modifications techniques**
+- Restructuration `PROGRAM_TEMPLATES` → `PROGRAM_PACKS` avec structure `days[]`
+- Nouvelles méthodes : `_createProgramsFromPack()`, `openBrowsePacks()`, `_renderBrowsePacks()`, `setBrowseFilter()`, `addPackToPrograms()`
+- CSS : ~120 nouvelles lignes pour pack cards, overlay, filter chips
+- Nommage intelligent : programmes créés portent le nom `"Pack — Jour"`
+
+---
 
 **v1.6.0** — 15 Février 2026
 
