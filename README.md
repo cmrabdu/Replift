@@ -4,13 +4,13 @@
 
 RepLift est une application web minimaliste et performante pour suivre vos performances en musculation, séance après séance. Conçue mobile-first avec une interface dark élégante.
 
-**📦 État actuel** : ✅ **Production Ready** — v1.7.0 (15 Février 2026)
+**📦 État actuel** : ✅ **Production Ready** — v1.8.0 (15 Février 2026)
 
 ---
 
 ## 🎯 Aperçu Rapide
 
-- **3 fichiers** : HTML (644L) + CSS (~2400L) + JS (2915L) = ~5959 lignes totales
+- **3 fichiers** : HTML (658L) + CSS (~3700L) + JS (~3200L) = ~7560 lignes totales
 - **Zero dépendances** : Vanilla JavaScript, pas de build, pas de framework
 - **Fonctionnel à 100%** : Programmes, sessions, historique, stats avancées, graphiques, achievements, onboarding
 - **Performance optimale** : Cache mémoire, memoization stats, localStorage, rendu Canvas
@@ -24,7 +24,7 @@ RepLift est une application web minimaliste et performante pour suivre vos perfo
 
 RepLift utilise **Semantic Versioning** : `MAJOR.MINOR.PATCH`
 
-### Version actuelle : **v1.7.0**
+### Version actuelle : **v1.8.0**
 *Dernière mise à jour : 15 Février 2026*
 
 ### Règles d'incrémentation
@@ -66,6 +66,30 @@ Nouvelles **fonctionnalités** sans casser l'existant :
 | Refonte complète en React | v1.2.0 | v2.0.0 | Breaking change = MAJOR |
 
 ### Changelog
+
+**v1.8.0** — 15 Février 2026
+
+*Audit qualité — 9 corrections critiques et refactoring DRY*
+
+**Corrections critiques**
+- 🔴 **UUID anti-collision** : `_uid()` remplace `Date.now().toString()` pour éviter les doublons en boucle rapide
+- 🔴 **Invalidation mémo** : `AppStats.clearMemo()` appelé dans `AppData.save()` pour purger le cache stats à chaque écriture
+
+**Corrections importantes**
+- 🟠 **DRY volume** : Extraction de `_sessionVolume()` et `_exerciseVolume()` — 8 duplications éliminées
+- 🟠 **Perf programmes** : Pré-indexation `sessCountMap` dans `updatePrograms()` (O(n) au lieu de O(n×m))
+- 🟠 **Suppression séries** : `seriesRowHTML()` utilise désormais `AppUI.deleteSeriesRow(this)` (nettoyage note-input)
+- 🟠 **CSS mort supprimé** : ~60 lignes de `.card`, `.card-row`, `.card-badge` etc. retirées
+- 🟠 **Emojis partagés** : `PROFILE_EMOJIS` const unique utilisée par onboarding et profil
+- 🟠 **PROGRAM_PACKS externalisé** : Sorti de `AppUI` vers une `const` standalone (séparation données/UI)
+- 🟠 **Protection cache** : `getSessions()` et `getPrograms()` retournent une copie shallow `[...array]`
+
+**Modifications techniques**
+- Ligne count : app.js 3194L, style.css 3688L = 6882L totales
+- Nouvelles fonctions globales : `_uid()`, `_sessionVolume()`, `_exerciseVolume()`, `PROFILE_EMOJIS`
+- Architecture améliorée : meilleure séparation données/constantes/UI
+
+---
 
 **v1.7.0** — 15 Février 2026
 

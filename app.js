@@ -1,11 +1,34 @@
 'use strict';
 
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
+
+// Collision-resistant unique ID generator
+function _uid() {
+  return Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 9);
+}
 
 // SVG icon helper — returns inline <svg> referencing the sprite
 function _ic(name, cls) {
   return '<svg class="icon' + (cls ? ' ' + cls : '') + '"><use href="#i-' + name + '"/></svg>';
 }
+
+// Volume helpers — DRY calculation used across AppStats
+function _sessionVolume(session) {
+  let vol = 0;
+  (session.exercices || []).forEach(ex => {
+    (ex.series || []).forEach(sr => {
+      vol += (Number(sr.poids) || 0) * (Number(sr.reps) || 0);
+    });
+  });
+  return vol;
+}
+function _exerciseVolume(exercise) {
+  return (exercise.series || []).reduce((sum, sr) =>
+    sum + ((Number(sr.poids) || 0) * (Number(sr.reps) || 0)), 0);
+}
+
+// Shared emoji palette used in onboarding & profile
+const PROFILE_EMOJIS = ['🏋️','💪','🔥','⚡','🏆','🎯','🦾','🐺','🦁','🐻','🦅','🚀','💎','👊','🥊','🏅','⭐','🌟','🎖️','🧠','🫀','🦿','🏃','🤸','🧘','🥇','✨','💯'];
 
 // ================================================================
 // DATA LAYER — Single source of truth via localStorage
@@ -44,6 +67,7 @@ const AppData = {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
       this._cache = data;
+      AppStats.clearMemo();
     } catch (e) {
       console.error('AppData.save error:', e);
     }
@@ -86,7 +110,7 @@ const AppData = {
 
   // --- Programmes ---
   getPrograms() {
-    return this.load().programs;
+    return [...this.load().programs];
   },
 
   getProgramById(id) {
@@ -95,7 +119,7 @@ const AppData = {
 
   addProgram(program) {
     const data = this.load();
-    program.id = Date.now().toString();
+    program.id = _uid();
     program.createdAt = new Date().toISOString();
     data.programs.push(program);
     this.save(data);
@@ -119,7 +143,7 @@ const AppData = {
 
   // --- Sessions ---
   getSessions() {
-    return this.load().sessions;
+    return [...this.load().sessions];
   },
 
   getSessionById(id) {
@@ -128,7 +152,7 @@ const AppData = {
 
   addSession(session) {
     const data = this.load();
-    session.id = Date.now().toString();
+    session.id = _uid();
     session.date = new Date().toISOString();
     data.sessions.push(session);
     this.save(data);
@@ -259,15 +283,7 @@ const AppStats = {
   // === Volume & Performance ===
   getTotalVolume() {
     return this._cached('totalVolume', () => {
-      let volume = 0;
-      AppData.getSessions().forEach(s => {
-        (s.exercices || []).forEach(ex => {
-          (ex.series || []).forEach(sr => {
-            volume += (Number(sr.poids) || 0) * (Number(sr.reps) || 0);
-          });
-        });
-      });
-      return volume;
+      return AppData.getSessions().reduce((vol, s) => vol + _sessionVolume(s), 0);
     });
   },
 
@@ -344,12 +360,7 @@ const AppStats = {
 
     AppData.getSessions().forEach(s => {
       const d = new Date(s.date);
-      let sessionVolume = 0;
-      (s.exercices || []).forEach(ex => {
-        (ex.series || []).forEach(sr => {
-          sessionVolume += (Number(sr.poids) || 0) * (Number(sr.reps) || 0);
-        });
-      });
+      const sessionVolume = _sessionVolume(s);
 
       if (d.getFullYear() === thisYear && d.getMonth() === thisMonth) {
         thisMonthVolume += sessionVolume;
@@ -456,11 +467,7 @@ const AppStats = {
         const sd = new Date(s.date);
         if (sd.getMonth() === month && sd.getFullYear() === year) {
           count++;
-          (s.exercices || []).forEach(ex => {
-            (ex.series || []).forEach(sr => {
-              volume += (Number(sr.poids) || 0) * (Number(sr.reps) || 0);
-            });
-          });
+          volume += _sessionVolume(s);
         }
       });
 
@@ -494,8 +501,7 @@ const AppStats = {
             date: session.date,
             weight: maxWeight,
             reps: totalReps,
-            volume: (ex.series || []).reduce((sum, sr) =>
-              sum + ((Number(sr.poids) || 0) * (Number(sr.reps) || 0)), 0)
+            volume: _exerciseVolume(ex)
           });
         }
       });
@@ -536,8 +542,7 @@ const AppStats = {
         if (ex.nom !== exerciseName) return;
         const maxWeight = Math.max(0, ...(ex.series || []).map(sr => Number(sr.poids) || 0));
         const totalReps = (ex.series || []).reduce((sum, sr) => sum + (Number(sr.reps) || 0), 0);
-        const volume = (ex.series || []).reduce((sum, sr) =>
-          sum + ((Number(sr.poids) || 0) * (Number(sr.reps) || 0)), 0);
+        const volume = _exerciseVolume(ex);
         if (maxWeight > 0) {
           sessions.push({ date: session.date, weight: maxWeight, reps: totalReps, volume });
         }
@@ -579,11 +584,7 @@ const AppStats = {
     AppData.getSessions().forEach(s => {
       const d = new Date(s.date);
       if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
-        (s.exercices || []).forEach(ex => {
-          (ex.series || []).forEach(sr => {
-            volume += (Number(sr.poids) || 0) * (Number(sr.reps) || 0);
-          });
-        });
+        volume += _sessionVolume(s);
       }
     });
     return volume;
@@ -599,12 +600,7 @@ const AppStats = {
 
     AppData.getSessions().forEach(s => {
       const d = new Date(s.date);
-      let sessionVolume = 0;
-      (s.exercices || []).forEach(ex => {
-        (ex.series || []).forEach(sr => {
-          sessionVolume += (Number(sr.poids) || 0) * (Number(sr.reps) || 0);
-        });
-      });
+      const sessionVolume = _sessionVolume(s);
 
       if (d >= thirtyDaysAgo) {
         current30Volume += sessionVolume;
@@ -704,12 +700,7 @@ const AppStats = {
       if (d.getMonth() !== month || d.getFullYear() !== year) return;
       
       const dayKey = d.getDate();
-      let sessionVolume = 0;
-      (s.exercices || []).forEach(ex => {
-        (ex.series || []).forEach(sr => {
-          sessionVolume += (Number(sr.poids) || 0) * (Number(sr.reps) || 0);
-        });
-      });
+      const sessionVolume = _sessionVolume(s);
       volumeMap[dayKey] = (volumeMap[dayKey] || 0) + sessionVolume;
     });
 
@@ -884,6 +875,177 @@ const AppStats = {
 };
 
 // ================================================================
+// PROGRAM PACKS — Standalone data constant
+// ================================================================
+const PROGRAM_PACKS = {
+  strength: {
+    beginner: [
+      {
+        name: 'StrongLifts 5×5', icon: '🛡️', freq: '3x/sem en alternance A/B', duration: '~60 min/séance',
+        desc: 'Le programme de force le plus populaire pour débutants. Progression linéaire simple et efficace.',
+        days: [
+          { name: 'Séance A', exercises: ['Squat', 'Développé couché', 'Rowing barre'] },
+          { name: 'Séance B', exercises: ['Squat', 'Développé militaire', 'Soulevé de terre'] },
+        ]
+      },
+    ],
+    intermediate: [
+      {
+        name: 'Texas Method', icon: '🛡️', freq: '3x/sem', duration: '~60-75 min/séance',
+        desc: 'Volume le lundi, récupération le mercredi, intensité le vendredi. Progression hebdomadaire.',
+        days: [
+          { name: 'Volume (Lundi)', exercises: ['Squat', 'Développé couché', 'Rowing barre', 'Curl biceps'] },
+          { name: 'Intensité (Vendredi)', exercises: ['Squat', 'Développé couché', 'Soulevé de terre'] },
+        ]
+      },
+      {
+        name: 'GZCLP', icon: '🛡️', freq: '4x/sem', duration: '~70 min/séance',
+        desc: 'Split Upper/Lower avec tiers de priorité. Progression structurée et flexible.',
+        days: [
+          { name: 'Upper (Push)', exercises: ['Développé couché', 'Développé militaire', 'Tractions', 'Rowing barre'] },
+          { name: 'Lower (Pull/Legs)', exercises: ['Squat', 'Soulevé de terre', 'Presse à cuisses', 'Leg curl'] },
+        ]
+      },
+    ],
+    advanced: [
+      {
+        name: 'Powerlifting Split', icon: '🛡️', freq: '4x/sem', duration: '~90 min/séance',
+        desc: 'Split spécifique pour les 3 mouvements de compétition. Variantes et accessoires dédiés.',
+        days: [
+          { name: 'Squat / Bench', exercises: ['Squat', 'Squat pause', 'Développé couché', 'Développé couché prise large', 'Rowing barre'] },
+          { name: 'Deadlift / Press', exercises: ['Soulevé de terre', 'Soulevé de terre roumain', 'Développé militaire', 'Tractions lestées', 'Good morning'] },
+        ]
+      },
+    ],
+  },
+  hypertrophy: {
+    beginner: [
+      {
+        name: 'Full Body Hypertrophie', icon: '💪', freq: '3x/sem en alternance A/B', duration: '~60 min/séance',
+        desc: 'Deux séances alternées pour couvrir tout le corps. Idéal pour construire une base musculaire.',
+        days: [
+          { name: 'Séance A', exercises: ['Squat', 'Développé couché', 'Rowing haltères', 'Curl biceps', 'Extensions triceps'] },
+          { name: 'Séance B', exercises: ['Soulevé de terre roumain', 'Développé militaire', 'Tractions assistées', 'Fentes', 'Élévations latérales'] },
+        ]
+      },
+    ],
+    intermediate: [
+      {
+        name: 'Push Pull Legs (PPL)', icon: '💪', freq: '3 à 6x/sem', duration: '~75 min/séance',
+        desc: 'Le split le plus populaire en hypertrophie. Un cycle de 3 jours à répéter selon ta fréquence.',
+        days: [
+          { name: 'Jour 1 — Push', exercises: ['Développé couché', 'Développé incliné haltères', 'Écartés poulie haute', 'Développé militaire', 'Élévations latérales', 'Extensions triceps poulie'] },
+          { name: 'Jour 2 — Pull', exercises: ['Tractions', 'Rowing barre', 'Tirage vertical', 'Face pull', 'Curl biceps barre', 'Curl marteau'] },
+          { name: 'Jour 3 — Legs', exercises: ['Squat', 'Presse à cuisses', 'Fentes bulgares', 'Leg curl couché', 'Mollets debout', 'Crunch'] },
+        ]
+      },
+    ],
+    advanced: [
+      {
+        name: 'Arnold Split', icon: '💪', freq: '6x/sem (2 cycles)', duration: '~80-85 min/séance',
+        desc: 'Le split légendaire d\'Arnold Schwarzenegger. Volume élevé, fréquence élevée, résultats maximaux.',
+        days: [
+          { name: 'Jour 1 — Chest & Back', exercises: ['Développé couché', 'Développé incliné', 'Écartés haltères', 'Tractions', 'Rowing T-bar', 'Pull-over'] },
+          { name: 'Jour 2 — Shoulders & Arms', exercises: ['Développé militaire barre', 'Élévations latérales', 'Élévations frontales', 'Curl biceps barre', 'Curl incliné haltères', 'Extensions triceps barre', 'Dips lestés'] },
+          { name: 'Jour 3 — Legs', exercises: ['Squat', 'Presse à cuisses', 'Fentes bulgares', 'Leg extension', 'Leg curl allongé', 'Mollets debout', 'Mollets assis'] },
+        ]
+      },
+    ],
+  },
+  endurance: {
+    beginner: [
+      {
+        name: 'Circuit Full Body', icon: '⚡', freq: '3x/sem', duration: '~45 min/séance',
+        desc: 'Circuit complet au poids du corps. Parfait pour débuter le cardio-muscu sans matériel.',
+        days: [
+          { name: 'Circuit', exercises: ['Squat poids du corps', 'Pompes', 'Fentes alternées', 'Planche', 'Jumping jacks', 'Mountain climbers'] },
+        ]
+      },
+    ],
+    intermediate: [
+      {
+        name: 'Circuit Métabolique', icon: '⚡', freq: '3-4x/sem', duration: '~50 min/séance',
+        desc: 'Circuit AMRAP avec charges légères. Brûle un max de calories tout en renforçant les muscles.',
+        days: [
+          { name: 'Circuit AMRAP', exercises: ['Goblet squat', 'Pompes', 'Kettlebell swing', 'Fentes sautées', 'Rowing haltères', 'Burpees', 'Planche dynamique'] },
+        ]
+      },
+    ],
+    advanced: [
+      {
+        name: 'HIIT Force-Cardio', icon: '⚡', freq: '4-5x/sem', duration: '~55 min/séance',
+        desc: 'Intervalles haute intensité mêlant force et cardio. Pour les athlètes confirmés.',
+        days: [
+          { name: 'HIIT', exercises: ['Thrusters', 'Pull-up', 'Box jump', 'Kettlebell swing', 'Burpees', 'Clean & press', 'Battle rope'] },
+        ]
+      },
+    ],
+  },
+  general: {
+    beginner: [
+      {
+        name: 'Full Body Débutant', icon: '🎯', freq: '3x/sem en alternance A/B', duration: '~55 min/séance',
+        desc: 'Programme équilibré pour débuter la musculation. Deux séances alternées, tous les muscles travaillés.',
+        days: [
+          { name: 'Séance A', exercises: ['Squat', 'Développé couché', 'Rowing haltères', 'Planche', 'Curl biceps'] },
+          { name: 'Séance B', exercises: ['Soulevé de terre roumain', 'Développé militaire', 'Tractions assistées', 'Fentes', 'Extensions triceps'] },
+        ]
+      },
+    ],
+    intermediate: [
+      {
+        name: 'Upper / Lower Split', icon: '🎯', freq: '4x/sem', duration: '~70 min/séance',
+        desc: 'Split classique haut/bas du corps. Chaque groupe musculaire travaillé 2 fois par semaine.',
+        days: [
+          { name: 'Upper (Haut du corps)', exercises: ['Développé couché', 'Rowing barre', 'Développé militaire', 'Tractions', 'Curl biceps', 'Extensions triceps'] },
+          { name: 'Lower (Bas du corps)', exercises: ['Squat', 'Soulevé de terre roumain', 'Presse à cuisses', 'Fentes bulgares', 'Leg curl', 'Mollets'] },
+        ]
+      },
+    ],
+    advanced: [
+      {
+        name: 'Upper / Lower Force-Volume', icon: '🎯', freq: '4x/sem', duration: '~85 min/séance',
+        desc: 'Split Upper/Lower avancé combinant force et volume. Progression sur tous les plans.',
+        days: [
+          { name: 'Upper (Haut du corps)', exercises: ['Développé couché', 'Rowing barre', 'Développé incliné', 'Tirage vertical', 'Développé militaire', 'Curl biceps', 'Extensions triceps'] },
+          { name: 'Lower (Bas du corps)', exercises: ['Squat', 'Soulevé de terre', 'Presse à cuisses', 'Fentes bulgares', 'Leg curl', 'Mollets debout'] },
+        ]
+      },
+    ],
+  },
+  weightloss: {
+    beginner: [
+      {
+        name: 'Fat Burn Full Body', icon: '🔥', freq: '3x/sem', duration: '~50 min/séance',
+        desc: 'Programme brûle-graisse sans matériel. Combine cardio et renforcement pour un max de dépense.',
+        days: [
+          { name: 'Full Body Cardio-Muscu', exercises: ['Squat goblet', 'Pompes', 'Fentes marchées', 'Gainage latéral', 'Mountain climbers', 'Jumping jacks'] },
+        ]
+      },
+    ],
+    intermediate: [
+      {
+        name: 'Metabolic Resistance', icon: '🔥', freq: '4x/sem', duration: '~55 min/séance',
+        desc: 'Circuit intensif avec charges. Maintien de la masse musculaire pendant la perte de gras.',
+        days: [
+          { name: 'Circuit MRT', exercises: ['Goblet squat', 'Développé haltères', 'Rowing haltères', 'Fentes sautées', 'Burpees', 'Planche', 'Kettlebell swing'] },
+        ]
+      },
+    ],
+    advanced: [
+      {
+        name: 'Shred Program', icon: '🔥', freq: '4-5x/sem', duration: '~60 min/séance',
+        desc: 'Split Upper/Lower haute intensité. Mélange muscu lourde et cardio explosif pour sécher.',
+        days: [
+          { name: 'Shred Upper', exercises: ['Développé couché', 'Tractions', 'Thrusters', 'Rowing barre', 'Dips', 'Battle rope'] },
+          { name: 'Shred Lower', exercises: ['Squat sauté', 'Soulevé de terre', 'Fentes bulgares', 'Box jump', 'Leg press', 'Kettlebell swing'] },
+        ]
+      },
+    ],
+  },
+};
+
+// ================================================================
 // UI LAYER
 // ================================================================
 const AppUI = {
@@ -901,177 +1063,6 @@ const AppUI = {
   obStep: 0,
   obData: { goal: null, level: null, name: '', emoji: '🏋️', freq: 3, selectedPrograms: [] },
 
-  // ================================================================
-  // ONBOARDING
-  // ================================================================
-  PROGRAM_PACKS: {
-    strength: {
-      beginner: [
-        {
-          name: 'StrongLifts 5×5', icon: '🛡️', freq: '3x/sem en alternance A/B', duration: '~60 min/séance',
-          desc: 'Le programme de force le plus populaire pour débutants. Progression linéaire simple et efficace.',
-          days: [
-            { name: 'Séance A', exercises: ['Squat', 'Développé couché', 'Rowing barre'] },
-            { name: 'Séance B', exercises: ['Squat', 'Développé militaire', 'Soulevé de terre'] },
-          ]
-        },
-      ],
-      intermediate: [
-        {
-          name: 'Texas Method', icon: '🛡️', freq: '3x/sem', duration: '~60-75 min/séance',
-          desc: 'Volume le lundi, récupération le mercredi, intensité le vendredi. Progression hebdomadaire.',
-          days: [
-            { name: 'Volume (Lundi)', exercises: ['Squat', 'Développé couché', 'Rowing barre', 'Curl biceps'] },
-            { name: 'Intensité (Vendredi)', exercises: ['Squat', 'Développé couché', 'Soulevé de terre'] },
-          ]
-        },
-        {
-          name: 'GZCLP', icon: '🛡️', freq: '4x/sem', duration: '~70 min/séance',
-          desc: 'Split Upper/Lower avec tiers de priorité. Progression structurée et flexible.',
-          days: [
-            { name: 'Upper (Push)', exercises: ['Développé couché', 'Développé militaire', 'Tractions', 'Rowing barre'] },
-            { name: 'Lower (Pull/Legs)', exercises: ['Squat', 'Soulevé de terre', 'Presse à cuisses', 'Leg curl'] },
-          ]
-        },
-      ],
-      advanced: [
-        {
-          name: 'Powerlifting Split', icon: '🛡️', freq: '4x/sem', duration: '~90 min/séance',
-          desc: 'Split spécifique pour les 3 mouvements de compétition. Variantes et accessoires dédiés.',
-          days: [
-            { name: 'Squat / Bench', exercises: ['Squat', 'Squat pause', 'Développé couché', 'Développé couché prise large', 'Rowing barre'] },
-            { name: 'Deadlift / Press', exercises: ['Soulevé de terre', 'Soulevé de terre roumain', 'Développé militaire', 'Tractions lestées', 'Good morning'] },
-          ]
-        },
-      ],
-    },
-    hypertrophy: {
-      beginner: [
-        {
-          name: 'Full Body Hypertrophie', icon: '💪', freq: '3x/sem en alternance A/B', duration: '~60 min/séance',
-          desc: 'Deux séances alternées pour couvrir tout le corps. Idéal pour construire une base musculaire.',
-          days: [
-            { name: 'Séance A', exercises: ['Squat', 'Développé couché', 'Rowing haltères', 'Curl biceps', 'Extensions triceps'] },
-            { name: 'Séance B', exercises: ['Soulevé de terre roumain', 'Développé militaire', 'Tractions assistées', 'Fentes', 'Élévations latérales'] },
-          ]
-        },
-      ],
-      intermediate: [
-        {
-          name: 'Push Pull Legs (PPL)', icon: '💪', freq: '3 à 6x/sem', duration: '~75 min/séance',
-          desc: 'Le split le plus populaire en hypertrophie. Un cycle de 3 jours à répéter selon ta fréquence.',
-          days: [
-            { name: 'Jour 1 — Push', exercises: ['Développé couché', 'Développé incliné haltères', 'Écartés poulie haute', 'Développé militaire', 'Élévations latérales', 'Extensions triceps poulie'] },
-            { name: 'Jour 2 — Pull', exercises: ['Tractions', 'Rowing barre', 'Tirage vertical', 'Face pull', 'Curl biceps barre', 'Curl marteau'] },
-            { name: 'Jour 3 — Legs', exercises: ['Squat', 'Presse à cuisses', 'Fentes bulgares', 'Leg curl couché', 'Mollets debout', 'Crunch'] },
-          ]
-        },
-      ],
-      advanced: [
-        {
-          name: 'Arnold Split', icon: '💪', freq: '6x/sem (2 cycles)', duration: '~80-85 min/séance',
-          desc: 'Le split légendaire d\'Arnold Schwarzenegger. Volume élevé, fréquence élevée, résultats maximaux.',
-          days: [
-            { name: 'Jour 1 — Chest & Back', exercises: ['Développé couché', 'Développé incliné', 'Écartés haltères', 'Tractions', 'Rowing T-bar', 'Pull-over'] },
-            { name: 'Jour 2 — Shoulders & Arms', exercises: ['Développé militaire barre', 'Élévations latérales', 'Élévations frontales', 'Curl biceps barre', 'Curl incliné haltères', 'Extensions triceps barre', 'Dips lestés'] },
-            { name: 'Jour 3 — Legs', exercises: ['Squat', 'Presse à cuisses', 'Fentes bulgares', 'Leg extension', 'Leg curl allongé', 'Mollets debout', 'Mollets assis'] },
-          ]
-        },
-      ],
-    },
-    endurance: {
-      beginner: [
-        {
-          name: 'Circuit Full Body', icon: '⚡', freq: '3x/sem', duration: '~45 min/séance',
-          desc: 'Circuit complet au poids du corps. Parfait pour débuter le cardio-muscu sans matériel.',
-          days: [
-            { name: 'Circuit', exercises: ['Squat poids du corps', 'Pompes', 'Fentes alternées', 'Planche', 'Jumping jacks', 'Mountain climbers'] },
-          ]
-        },
-      ],
-      intermediate: [
-        {
-          name: 'Circuit Métabolique', icon: '⚡', freq: '3-4x/sem', duration: '~50 min/séance',
-          desc: 'Circuit AMRAP avec charges légères. Brûle un max de calories tout en renforçant les muscles.',
-          days: [
-            { name: 'Circuit AMRAP', exercises: ['Goblet squat', 'Pompes', 'Kettlebell swing', 'Fentes sautées', 'Rowing haltères', 'Burpees', 'Planche dynamique'] },
-          ]
-        },
-      ],
-      advanced: [
-        {
-          name: 'HIIT Force-Cardio', icon: '⚡', freq: '4-5x/sem', duration: '~55 min/séance',
-          desc: 'Intervalles haute intensité mêlant force et cardio. Pour les athlètes confirmés.',
-          days: [
-            { name: 'HIIT', exercises: ['Thrusters', 'Pull-up', 'Box jump', 'Kettlebell swing', 'Burpees', 'Clean & press', 'Battle rope'] },
-          ]
-        },
-      ],
-    },
-    general: {
-      beginner: [
-        {
-          name: 'Full Body Débutant', icon: '🎯', freq: '3x/sem en alternance A/B', duration: '~55 min/séance',
-          desc: 'Programme équilibré pour débuter la musculation. Deux séances alternées, tous les muscles travaillés.',
-          days: [
-            { name: 'Séance A', exercises: ['Squat', 'Développé couché', 'Rowing haltères', 'Planche', 'Curl biceps'] },
-            { name: 'Séance B', exercises: ['Soulevé de terre roumain', 'Développé militaire', 'Tractions assistées', 'Fentes', 'Extensions triceps'] },
-          ]
-        },
-      ],
-      intermediate: [
-        {
-          name: 'Upper / Lower Split', icon: '🎯', freq: '4x/sem', duration: '~70 min/séance',
-          desc: 'Split classique haut/bas du corps. Chaque groupe musculaire travaillé 2 fois par semaine.',
-          days: [
-            { name: 'Upper (Haut du corps)', exercises: ['Développé couché', 'Rowing barre', 'Développé militaire', 'Tractions', 'Curl biceps', 'Extensions triceps'] },
-            { name: 'Lower (Bas du corps)', exercises: ['Squat', 'Soulevé de terre roumain', 'Presse à cuisses', 'Fentes bulgares', 'Leg curl', 'Mollets'] },
-          ]
-        },
-      ],
-      advanced: [
-        {
-          name: 'Upper / Lower Force-Volume', icon: '🎯', freq: '4x/sem', duration: '~85 min/séance',
-          desc: 'Split Upper/Lower avancé combinant force et volume. Progression sur tous les plans.',
-          days: [
-            { name: 'Upper (Haut du corps)', exercises: ['Développé couché', 'Rowing barre', 'Développé incliné', 'Tirage vertical', 'Développé militaire', 'Curl biceps', 'Extensions triceps'] },
-            { name: 'Lower (Bas du corps)', exercises: ['Squat', 'Soulevé de terre', 'Presse à cuisses', 'Fentes bulgares', 'Leg curl', 'Mollets debout'] },
-          ]
-        },
-      ],
-    },
-    weightloss: {
-      beginner: [
-        {
-          name: 'Fat Burn Full Body', icon: '🔥', freq: '3x/sem', duration: '~50 min/séance',
-          desc: 'Programme brûle-graisse sans matériel. Combine cardio et renforcement pour un max de dépense.',
-          days: [
-            { name: 'Full Body Cardio-Muscu', exercises: ['Squat goblet', 'Pompes', 'Fentes marchées', 'Gainage latéral', 'Mountain climbers', 'Jumping jacks'] },
-          ]
-        },
-      ],
-      intermediate: [
-        {
-          name: 'Metabolic Resistance', icon: '🔥', freq: '4x/sem', duration: '~55 min/séance',
-          desc: 'Circuit intensif avec charges. Maintien de la masse musculaire pendant la perte de gras.',
-          days: [
-            { name: 'Circuit MRT', exercises: ['Goblet squat', 'Développé haltères', 'Rowing haltères', 'Fentes sautées', 'Burpees', 'Planche', 'Kettlebell swing'] },
-          ]
-        },
-      ],
-      advanced: [
-        {
-          name: 'Shred Program', icon: '🔥', freq: '4-5x/sem', duration: '~60 min/séance',
-          desc: 'Split Upper/Lower haute intensité. Mélange muscu lourde et cardio explosif pour sécher.',
-          days: [
-            { name: 'Shred Upper', exercises: ['Développé couché', 'Tractions', 'Thrusters', 'Rowing barre', 'Dips', 'Battle rope'] },
-            { name: 'Shred Lower', exercises: ['Squat sauté', 'Soulevé de terre', 'Fentes bulgares', 'Box jump', 'Leg press', 'Kettlebell swing'] },
-          ]
-        },
-      ],
-    },
-  },
-
   checkOnboarding() {
     const data = AppData.load();
     if (!data.user || !data.user.onboardingDone) {
@@ -1088,7 +1079,7 @@ const AppUI = {
   },
 
   populateObEmojis() {
-    const emojis = ['🏋️','💪','🔥','⚡','🏆','🎯','🦾','🐺','🦁','🐻','🦅','🚀','💎','👊','🥊','🏅','⭐','🌟','🎖️','🧠','🫀','🦿','🏃','🤸','🧘','🥇','✨','💯'];
+    const emojis = PROFILE_EMOJIS;
     const grid = document.getElementById('ob-emoji-grid');
     grid.innerHTML = emojis.map(e =>
       '<button class="ob-emoji-btn' + (e === this.obData.emoji ? ' selected' : '') + '" type="button" onclick="AppUI.pickObEmoji(this, \'' + e + '\')">' + e + '</button>'
@@ -1158,14 +1149,14 @@ const AppUI = {
   renderObPrograms() {
     const goal = this.obData.goal || 'general';
     const level = this.obData.level || 'beginner';
-    const packs = (this.PROGRAM_PACKS[goal] && this.PROGRAM_PACKS[goal][level])
-      || this.PROGRAM_PACKS.general.beginner;
+    const packs = (PROGRAM_PACKS[goal] && PROGRAM_PACKS[goal][level])
+      || PROGRAM_PACKS.general.beginner;
 
     // Also add a pack from a different category for variety
-    const altGoals = Object.keys(this.PROGRAM_PACKS).filter(g => g !== goal);
+    const altGoals = Object.keys(PROGRAM_PACKS).filter(g => g !== goal);
     const altGoal = altGoals[Math.floor(Math.random() * altGoals.length)];
-    const altPacks = this.PROGRAM_PACKS[altGoal] && this.PROGRAM_PACKS[altGoal][level]
-      ? this.PROGRAM_PACKS[altGoal][level] : [];
+    const altPacks = PROGRAM_PACKS[altGoal] && PROGRAM_PACKS[altGoal][level]
+      ? PROGRAM_PACKS[altGoal][level] : [];
 
     const allPacks = [...packs, ...altPacks.slice(0, 1)];
 
@@ -1214,9 +1205,11 @@ const AppUI = {
   /** Create individual programs from a pack (each day = one program) */
   _createProgramsFromPack(pack) {
     pack.days.forEach(day => {
-      const prefix = pack.days.length > 1 ? pack.name + ' — ' : '';
       AppData.addProgram({
-        nom: prefix + day.name,
+        nom: day.name,
+        packName: pack.name,
+        packIcon: pack.icon,
+        packFreq: pack.freq,
         exercices: day.exercises.map(e => ({
           nom: e,
           series: [{ poids: 0, reps: 10 }, { poids: 0, reps: 10 }, { poids: 0, reps: 10 }],
@@ -1261,7 +1254,7 @@ const AppUI = {
   _renderBrowsePacks() {
     const filter = this._browseFilter;
     const container = document.getElementById('browse-packs-list');
-    const categories = filter.category ? [filter.category] : Object.keys(this.PROGRAM_PACKS);
+    const categories = filter.category ? [filter.category] : Object.keys(PROGRAM_PACKS);
     const levels = filter.level ? [filter.level] : ['beginner', 'intermediate', 'advanced'];
 
     // Render filter chips
@@ -1281,7 +1274,7 @@ const AppUI = {
     let html = '';
     categories.forEach(cat => {
       levels.forEach(lvl => {
-        const packs = this.PROGRAM_PACKS[cat] && this.PROGRAM_PACKS[cat][lvl];
+        const packs = PROGRAM_PACKS[cat] && PROGRAM_PACKS[cat][lvl];
         if (!packs || !packs.length) return;
         packs.forEach((pack, packIdx) => {
           const totalExos = pack.days.reduce((sum, d) => sum + d.exercises.length, 0);
@@ -1324,8 +1317,8 @@ const AppUI = {
   },
 
   addPackToPrograms(category, level, packIdx) {
-    const pack = this.PROGRAM_PACKS[category] && this.PROGRAM_PACKS[category][level]
-      ? this.PROGRAM_PACKS[category][level][packIdx] : null;
+    const pack = PROGRAM_PACKS[category] && PROGRAM_PACKS[category][level]
+      ? PROGRAM_PACKS[category][level][packIdx] : null;
     if (!pack) return;
     this._createProgramsFromPack(pack);
     this.closeOverlay('overlay-browse-packs');
@@ -1846,21 +1839,55 @@ const AppUI = {
         '</div>';
       return;
     }
+    // Pre-index session counts by programId (O(n) instead of O(n*m))
+    const sessCountMap = {};
+    AppData.getSessions().forEach(s => {
+      if (s.programId) sessCountMap[s.programId] = (sessCountMap[s.programId] || 0) + 1;
+    });
+
     container.innerHTML = programs.map(p => {
       const exCount = (p.exercices || []).length;
-      const sessCount = AppData.getSessions().filter(s => s.programId === p.id).length;
-      const badge = (p.exercices || []).map(e => {
+      const sessCount = sessCountMap[p.id] || 0;
+      
+      // Pack badge if program comes from a pack
+      const packBadge = p.packName 
+        ? '<div class="program-pack-badge">' + (p.packIcon || '📦') + ' ' + this.esc(p.packName) + '</div>'
+        : '';
+      
+      // Exercise tags (max 4 displayed)
+      const exerciseTags = (p.exercices || []).slice(0, 4).map(e => {
         const n = e.nom || '';
-        return n.length > 18 ? n.substring(0, 16) + '…' : n;
-      }).filter(Boolean).slice(0, 2).join(', ') || 'Vide';
+        const shortName = n.length > 20 ? n.substring(0, 18) + '…' : n;
+        return '<span class="program-exercise-tag">' + this.esc(shortName) + '</span>';
+      }).join('');
+      
+      const moreCount = exCount > 4 ? exCount - 4 : 0;
+      const moreTag = moreCount > 0 
+        ? '<span class="program-exercise-tag program-exercise-tag--more">+' + moreCount + '</span>'
+        : '';
+      
+      const exercisesSection = exCount > 0
+        ? '<div class="program-card-exercises">' + exerciseTags + moreTag + '</div>'
+        : '<div class="program-card-exercises program-card-exercises--empty">Aucun exercice</div>';
+      
       return (
-        '<div class="card" onclick="AppUI.openEditProgram(\'' + this.escAttr(p.id) + '\')">' +
-          '<div class="card-row">' +
-            '<div>' +
-              '<div class="card-title">' + this.esc(p.nom) + '</div>' +
-              '<div class="card-subtitle">' + exCount + ' exercice(s) — ' + sessCount + ' séance(s)</div>' +
-            '</div>' +
-            '<div class="card-badge">' + this.esc(badge) + '</div>' +
+        '<div class="program-card" onclick="AppUI.openEditProgram(\'' + this.escAttr(p.id) + '\')">' +
+          packBadge +
+          '<div class="program-card-header">' +
+            '<h3 class="program-card-title">' + this.esc(p.nom) + '</h3>' +
+          '</div>' +
+          '<div class="program-card-body">' +
+            exercisesSection +
+          '</div>' +
+          '<div class="program-card-footer">' +
+            '<span class="program-stat-badge">' +
+              '<svg class="icon icon--xs"><use href="#i-dumbbell"/></svg>' +
+              exCount + ' exercice' + (exCount > 1 ? 's' : '') +
+            '</span>' +
+            '<span class="program-stat-badge">' +
+              '<svg class="icon icon--xs"><use href="#i-calendar"/></svg>' +
+              sessCount + ' séance' + (sessCount > 1 ? 's' : '') +
+            '</span>' +
           '</div>' +
         '</div>'
       );
@@ -1878,6 +1905,8 @@ const AppUI = {
     if (dupBtn) dupBtn.style.display = 'none';
     var delSessBtn = document.getElementById('btn-delete-program-sessions');
     if (delSessBtn) delSessBtn.style.display = 'none';
+    var packInfo = document.getElementById('program-pack-info');
+    if (packInfo) packInfo.style.display = 'none';
     this.exerciseCounter = 0;
     this.addExerciseToForm();
     this.openOverlay('overlay-create-program');
@@ -1895,6 +1924,26 @@ const AppUI = {
     if (dupBtn) dupBtn.style.display = 'block';
     var delSessBtn = document.getElementById('btn-delete-program-sessions');
     if (delSessBtn) delSessBtn.style.display = 'block';
+    
+    // Show pack info if program comes from a pack
+    var packInfo = document.getElementById('program-pack-info');
+    if (packInfo) {
+      if (program.packName) {
+        packInfo.innerHTML = 
+          '<div class="pack-info-badge">' +
+            '<span class="pack-info-icon">' + (program.packIcon || '📦') + '</span>' +
+            '<div class="pack-info-text">' +
+              '<div class="pack-info-label">Programme issu du pack</div>' +
+              '<div class="pack-info-name">' + this.esc(program.packName) + '</div>' +
+              (program.packFreq ? '<div class="pack-info-freq">' + this.esc(program.packFreq) + '</div>' : '') +
+            '</div>' +
+          '</div>';
+        packInfo.style.display = 'block';
+      } else {
+        packInfo.style.display = 'none';
+      }
+    }
+    
     this.exerciseCounter = 0;
     if (program.exercices && program.exercices.length > 0) {
       program.exercices.forEach(ex => this.addExerciseToForm(ex));
@@ -1969,7 +2018,7 @@ const AppUI = {
         '<span class="series-num">' + serieNum + '</span>' +
         '<input type="number" placeholder="kg" value="' + (poids || '') + '" data-type="poids">' +
         '<input type="number" placeholder="reps" value="' + (reps || '') + '" data-type="reps">' +
-        '<button class="series-delete" onclick="this.parentElement.remove()">' + _ic('x') + '</button>' +
+        '<button class="series-delete" onclick="AppUI.deleteSeriesRow(this)">' + _ic('x') + '</button>' +
       '</div>'
     );
   },
@@ -2834,7 +2883,7 @@ const AppUI = {
     document.getElementById('edit-profile-emoji-preview').textContent = currentEmoji;
 
     // Populate emoji grid
-    const emojis = ['🏋️','💪','🔥','⚡','🏆','🎯','🦾','🐺','🦁','🐻','🦅','🚀','💎','👊','🥊','🏅','⭐','🌟','🎖️','🧠','🫀','🦿','🏃','🤸','🧘','🥇','✨','💯'];
+    const emojis = PROFILE_EMOJIS;
     const grid = document.getElementById('edit-profile-emoji-grid');
     grid.innerHTML = emojis.map(e =>
       '<button class="emoji-pick-btn' + (e === currentEmoji ? ' selected' : '') + '" type="button" onclick="AppUI.pickProfileEmoji(this, \'' + e + '\')">' + e + '</button>'
