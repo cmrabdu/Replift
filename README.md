@@ -1,452 +1,192 @@
 # RepLift 🏋️
 
-> **Application web de suivi d'entraînement en musculation** — Simple. Rapide. Puissante.
+> **Application de suivi d'entraînement musculation** — Simple. Rapide. Puissante.
 
-RepLift est une application web minimaliste et performante pour suivre vos performances en musculation, séance après séance. Conçue mobile-first avec une interface dark élégante.
+PWA mobile-first en Vanilla JS pour suivre ses performances en salle, séance après séance. Interface dark élégante, zéro dépendance, offline-ready.
 
-**📦 État actuel** : ✅ **Production Ready** — v1.8.0 (15 Février 2026)
-
----
-
-## 🎯 Aperçu Rapide
-
-- **3 fichiers** : HTML (658L) + CSS (~3700L) + JS (~3200L) = ~7560 lignes totales
-- **Zero dépendances** : Vanilla JavaScript, pas de build, pas de framework
-- **Fonctionnel à 100%** : Programmes, sessions, historique, stats avancées, graphiques, achievements, onboarding
-- **Performance optimale** : Cache mémoire, memoization stats, localStorage, rendu Canvas
-- **Mobile-first** : Pensé pour utilisation en salle de sport
-- **Code quality** : Architecture en couches, strict mode, protection XSS, null-safe DOM
-- **PWA-ready** : Configuration Capacitor pour déploiement iOS/Android
+**v1.9.0** — 16 Février 2026 · ✅ Production Ready
 
 ---
 
-## 🔢 Versioning
+## Table des matières
 
-RepLift utilise **Semantic Versioning** : `MAJOR.MINOR.PATCH`
-
-### Version actuelle : **v1.8.0**
-*Dernière mise à jour : 15 Février 2026*
-
-### Règles d'incrémentation
-
-#### MAJOR (v2.0.0, v3.0.0...)
-Changements **breaking** qui cassent le fonctionnement existant :
-- Modification du format de données localStorage incompatible
-- Refonte complète de l'architecture
-- Suppression de fonctionnalités majeures
-- Changement radical d'UI/UX qui bouleverse l'usage
-- Migration vers un framework (React, Vue...)
-
-#### MINOR (v1.1.0, v1.2.0...)
-Nouvelles **fonctionnalités** sans casser l'existant :
-- Ajout d'une nouvelle page (ex: Nutrition, Objectifs)
-- Nouvelle feature majeure (ex: Chronomètre, Mode clair/sombre)
-- Nouveau type de stats/graphique
-- Nouvelles intégrations (export PDF, partage social)
-- Amélioration significative d'une feature existante
-
-#### PATCH (v1.0.1, v1.0.2...)
-**Corrections** et petites améliorations :
-- Bug fixes
-- Correctifs CSS/UI mineurs
-- Optimisations de performance
-- Typos dans les textes
-- Mises à jour de sécurité
-- Ajustements responsive
-- Amélioration de code interne sans impact utilisateur
-
-### Exemples d'incrémentation
-
-| Changement | Avant | Après | Raison |
-|---|---|---|---|
-| Fix bug générer données test | v1.0.0 | v1.0.1 | Bug fix = PATCH |
-| Ajout responsive | v1.0.1 | v1.0.2 | Amélioration UI = PATCH |
-| Ajout chronomètre de repos | v1.0.2 | v1.1.0 | Nouvelle feature = MINOR |
-| Ajout mode clair | v1.1.0 | v1.2.0 | Nouvelle feature = MINOR |
-| Refonte complète en React | v1.2.0 | v2.0.0 | Breaking change = MAJOR |
-
-### Changelog
-
-**v1.8.0** — 15 Février 2026
-
-*Audit qualité — 9 corrections critiques et refactoring DRY*
-
-**Corrections critiques**
-- 🔴 **UUID anti-collision** : `_uid()` remplace `Date.now().toString()` pour éviter les doublons en boucle rapide
-- 🔴 **Invalidation mémo** : `AppStats.clearMemo()` appelé dans `AppData.save()` pour purger le cache stats à chaque écriture
-
-**Corrections importantes**
-- 🟠 **DRY volume** : Extraction de `_sessionVolume()` et `_exerciseVolume()` — 8 duplications éliminées
-- 🟠 **Perf programmes** : Pré-indexation `sessCountMap` dans `updatePrograms()` (O(n) au lieu de O(n×m))
-- 🟠 **Suppression séries** : `seriesRowHTML()` utilise désormais `AppUI.deleteSeriesRow(this)` (nettoyage note-input)
-- 🟠 **CSS mort supprimé** : ~60 lignes de `.card`, `.card-row`, `.card-badge` etc. retirées
-- 🟠 **Emojis partagés** : `PROFILE_EMOJIS` const unique utilisée par onboarding et profil
-- 🟠 **PROGRAM_PACKS externalisé** : Sorti de `AppUI` vers une `const` standalone (séparation données/UI)
-- 🟠 **Protection cache** : `getSessions()` et `getPrograms()` retournent une copie shallow `[...array]`
-
-**Modifications techniques**
-- Ligne count : app.js 3194L, style.css 3688L = 6882L totales
-- Nouvelles fonctions globales : `_uid()`, `_sessionVolume()`, `_exerciseVolume()`, `PROFILE_EMOJIS`
-- Architecture améliorée : meilleure séparation données/constantes/UI
+1. [Aperçu](#-aperçu)
+2. [Fonctionnalités](#-fonctionnalités)
+3. [Installation](#-installation)
+4. [Architecture](#-architecture)
+5. [Structure de données](#-structure-de-données)
+6. [Design System](#-design-system)
+7. [Déploiement](#-déploiement)
+8. [Versioning & Changelog](#-versioning--changelog)
+9. [Roadmap](#-roadmap)
 
 ---
 
-**v1.7.0** — 15 Février 2026
+## 🎯 Aperçu
 
-*Feature majeure — Système de packs de programmes structurés*
-
-**Nouvelles fonctionnalités**
-- ✨ **Système de packs** : Programmes structurés en séances multiples (Push/Pull/Legs, Full Body, etc.)
-  - 15 packs professionnels organisés par catégorie (Force, Hypertrophie, Endurance, Général, Perte de poids)
-  - 3 niveaux par catégorie (Débutant, Intermédiaire, Avancé)
-  - Chaque pack contient plusieurs séances (jours) avec exercices spécifiques
-- 📦 **Overlay "Programmes préfaits"** : Parcourir et ajouter des packs depuis l'onglet Programmes
-  - Filtrage par catégorie et niveau avec chips interactifs
-  - Ajout simple d'un pack complet (crée un programme par jour)
-- 🎯 **Onboarding amélioré** : Sélection d'un pack complet au lieu de sessions individuelles
-  - Présentation visuelle des jours inclus dans chaque pack
-  - Recommandations basées sur objectif et niveau sélectionnés
-  - Création automatique de tous les programmes du pack lors de la finalisation
-
-**Modifications techniques**
-- Restructuration `PROGRAM_TEMPLATES` → `PROGRAM_PACKS` avec structure `days[]`
-- Nouvelles méthodes : `_createProgramsFromPack()`, `openBrowsePacks()`, `_renderBrowsePacks()`, `setBrowseFilter()`, `addPackToPrograms()`
-- CSS : ~120 nouvelles lignes pour pack cards, overlay, filter chips
-- Nommage intelligent : programmes créés portent le nom `"Pack — Jour"`
-
----
-
-**v1.6.0** — 15 Février 2026
-
-*Feature majeure — Onboarding complet pour nouveaux utilisateurs*
-
-**Nouvelles fonctionnalités**
-- ✨ **Onboarding interactif** complet pour première utilisation (6 écrans)
-  - Écran 0 : Accueil et présentation
-  - Écran 1 : Sélection objectif (Force, Hypertrophie, Endurance, Général, Perte de poids)
-  - Écran 2 : Niveau d'expérience (Débutant, Intermédiaire, Avancé)
-  - Écran 3 : Profil personnalisé (nom, avatar emoji avec grille de 28 emojis)
-  - Écran 4 : Fréquence d'entraînement (1-7 séances/semaine avec compteur)
-  - Écran 5 : Recommandation de programmes starter adaptés au profil
-- ✨ Génération automatique de **programmes starter** selon profil utilisateur
-  - Débutant Force : Full Body 3x (3 séances/semaine)
-  - Intermédiaire Force : Upper/Lower Split (4 séances)
-  - Avancé Force : PPL 6x (6 séances)
-  - Hypertrophie : programmes adaptés par niveau
-  - Endurance : circuits et HIIT
-- ✨ Navigation onboarding fluide (Suivant/Retour/Passer)
-- ✨ Indicateur de progression par écran (step indicator)
-- ✨ Stockage préférences user avec flag `onboardingDone`
-- ✨ Grille emojis interactive avec sélection visuelle
-
-**Améliorations UX/UI**
-- 🎨 Design onboarding moderne avec animations slide
-- 🎨 Cards de choix avec hover states et feedback sélection
-- 🎨 Compteur fréquence avec boutons +/- stylisés
-- 🎨 Avatar preview live pendant la sélection
-
-**Architecture**
-- ⚡ Méthodes AppUI : `checkOnboarding()`, `showOnboarding()`, `updateObScreen()`
-- ⚡ Gestion state onboarding : `obStep`, `obData` avec validation
-- ⚡ Génération programmes conditionnelle selon profil
-- ⚡ Migration données user avec flag `onboardingDone`
-
----
-
-**v1.1.1** — 12 Février 2026
-
-*Correctif critique — Bugfixes mobile UX*
-
-**Corrections de bugs**
-- 🐛 **Swipe-to-close refonte complète** : listeners sur `.overlay-header` uniquement
-  - Empêche fermeture accidentelle lors du scroll ou typing dans inputs
-  - Threshold augmenté 120px → 180px pour geste plus intentionnel
-  - Détection horizontale (>30px cancels swipe) pour éviter faux positifs
-  - Animation smooth exit avec translateY(100%)
-  - Handler `touchcancel` ajouté pour cleanup
-- 🐛 **Chart tooltip listener stacking fix** : bind-once pattern avec flag `_chartBound`
-  - Data refs stockées sur canvas (`_cData`) pour éviter re-bind
-  - Helpers `_findChartHit()` et `_showChartTip()` dédiés
-  - Plus de listeners dupliqués lors re-render/changement période
-- 🐛 `closeOverlay()` hide tooltip automatiquement (cleanup cohérent)
-- 🐛 Swipe dismiss route via `closeOverlay()` au lieu de classList direct
-
----
-
-**v1.1.0** — 11 Février 2026
-
-*Refonte majeure — Dashboard redesign, UX overhaul, audit complet*
-
-**Nouvelles fonctionnalités**
-- ✨ Dashboard redesigné : 7 métriques (séances/mois, volume, progression 30j, PRs mois, dernière séance, série hebdo) + widget calendrier heatmap navigable
-- ✨ Page Stats enrichie : métriques stratégiques (volume total, intensité moyenne, balance musculaire Push/Pull, taux progression), records personnels, tendances, évolution par exercice avec graphiques Canvas
-- ✨ Page Profil complète : avatar emoji, bio éditable, 18 achievements déblocables, système de rang (Rookie → Légende), stats d'évolution mensuelle
-- ✨ Système de **toast notifications** — remplace tous les `alert()` natifs
-- ✨ **Timer de session** live (mm:ss) pendant les séances actives
-- ✨ **Swipe-to-close** sur tous les overlays (geste pull-down)
-- ✨ **Historique paginé** par mois avec navigation ← →
-- ✨ **Duplication de programmes** (bouton "Dupliquer" dans l'édition)
-- ✨ **Suppression programme + séances** associées (option dédiée)
-- ✨ **Tooltip tactile** sur les graphiques Canvas (touch & hover)
-- ✨ **Greeting dynamique** dans le header ("Bonjour, {nom}" selon l'heure)
-- ✨ **Rang profil** basé sur les achievements (🆕 Rookie → 🏆 Légende)
-- ✨ Hint "Tap pour voir le graphique" sur les exercices d'évolution
-- ✨ Vibration haptique au lancement de séance (FAB)
-- ✨ Version affichée dynamiquement dans le footer via `APP_VERSION`
-
-**Améliorations architecture**
-- ⚡ **Memoization** des calculs lourds (AppStats._cached) : getTotalVolume, getTotalReps, getPersonalRecords, getWeeklyStreak
-- ⚡ Invalidation automatique du cache memo sur `invalidateCache()`
-- ⚡ **Init optimisé** : seul le dashboard est rendu au démarrage, les autres pages en lazy-load
-- ⚡ **Migration données** : `replift_recent_achievements` fusionné dans `replift_data` principal
-- ⚡ Modèle de données enrichi : champs `version` et `recentAchievements`
-- ⚡ Méthodes AppData nouvelles : `duplicateProgram()`, `deleteProgramWithSessions()`
-- ⚡ Safe DOM helper `$()` — accès null-safe aux éléments
-
-**Corrections de bugs**
-- 🐛 Fix saveSession utilisait `placeholder` comme valeur réelle (auto-remplissage fantôme)
-- 🐛 saveSession appelle maintenant `updateProfile()` après sauvegarde
-- 🐛 Balance musculaire : liste Push/Pull enrichie (22+ exercices chaque)
-- 🐛 Import données : validation stricte (objet + arrays requis)
-
-**Améliorations UI/CSS**
-- 🎨 Navbar glassmorphism avec backdrop-filter et FAB gradient
-- 🎨 Header redesigné : plus fin, glassmorphism, greeting dynamique + brand
-- 🎨 CSS variable `--color-primary: #6366f1` définie dans `:root`
-- 🎨 Alias `--fs-xs`, `--fs-sm`, `--fs-base` ajoutés
-- 🎨 Suppression CSS mort (`.favorites-*`)
-- 🎨 Badge `.recent` avec animation pulse
-- 🎨 Nouveaux composants CSS : toast, session-timer, profile-rank, historique-nav, chart-tooltip, evolution-item-hint
-- 🎨 Labels traduits : "Série hebdo", "Activité", "Séances"
-
-**v1.0.1** — 10 Février 2026
-- 🎨 Refonte responsive complète
-- ✅ Système de 48 CSS variables (couleurs, espacements, fonts)
-- ✅ Typographie fluide avec `clamp()` (320px → 1200px+)
-- ✅ 6 breakpoints (< 360px, tablets, desktop, > 1200px)
-- ✅ Safe areas pour iPhone notch/Dynamic Island
-- ✅ Touch targets minimum 44px (accessibilité)
-- ✅ Gestion landscape, reduced motion, hover/touch
-- ✅ CSS : 1018 → 1500 lignes
-- ✅ Footer avec version + crédit
-- 🐛 Fix iOS zoom sur inputs (font-size: 16px)
-
-**v1.0.0** — 10 Février 2026
-- ✨ Release initiale production-ready
-- ✅ Programmes personnalisables (CRUD)
-- ✅ Sessions avec ghost data
-- ✅ Stats avancées (6 sections)
-- ✅ Graphiques d'évolution Canvas
-- ✅ Export/Import/Test data
-- ✅ Architecture 3 couches (Data/Stats/UI)
-- ✅ Protection XSS + cache optimisé
+| Métrique | Valeur |
+|---|---|
+| Fichiers source | 3 (HTML + CSS + JS) |
+| Lignes totales | ~7 540 (657 + 3 685 + 3 195) |
+| Dépendances | **0** — Vanilla JS, pas de build |
+| Architecture | 3 couches (Data / Stats / UI) |
+| Stockage | localStorage avec cache mémoire |
+| Compatibilité | Mobile-first, PWA-ready (Capacitor iOS) |
 
 ---
 
 ## ✨ Fonctionnalités
 
-### 🎯 Core Features
-- **Onboarding interactif** : Personnalisation profil et génération programmes starter (première utilisation)
-- **Programmes personnalisables** : Création, modification, duplication, suppression (avec ou sans séances associées)
-- **Sessions avec Ghost Data** : Démarrage de séance avec affichage des performances précédentes en transparence
-- **Timer de session** : Chronomètre live mm:ss pendant l'entraînement
-- **Historique paginé** : Navigation mois par mois avec détails (exercices, séries, poids, reps, volume)
-- **Dashboard temps réel** : 7 métriques + calendrier heatmap navigable (12 mois)
+### Core
+- **Onboarding** — Flow 6 écrans : objectif, niveau, profil, fréquence, programmes starter
+- **Programmes** — CRUD complet, duplication, suppression avec/sans séances
+- **15 packs professionnels** — Organisés par catégorie × niveau, importables en 1 tap
+- **Sessions avec Ghost Data** — Performances précédentes affichées en transparence
+- **Timer de session** — Chronomètre live mm:ss
+- **Historique paginé** — Navigation mois par mois
 
-### 📊 Statistiques Avancées
-- **Page Stats dédiée** : Métriques stratégiques complètes
-  - Volume total & Intensité moyenne (kg/rep)
-  - Balance musculaire Push/Pull (22+ exercices reconnus par catégorie)
-  - Taux de progression mensuel
-  - Records personnels par exercice (poids max + date)
-  - Tendances semaine/mois vs périodes précédentes
-  - Évolution par exercice (progression %, trend, graphique interactif)
-  - Achievements récents
-  
-- **Graphiques d'évolution** : Charts interactifs Canvas par exercice
-  - Visualisation poids dans le temps avec tooltip tactile
-  - Multi-périodes (7j, 30j, 3M, 6M, 1A)
-  - Stats calculées (progression %, meilleure session, dernière session)
+### Dashboard
+- 7 métriques temps réel (séances/mois, volume, progression 30j, PRs, streak…)
+- Calendrier heatmap navigable (12 mois, intensité par percentiles)
 
-### 🏆 Profil & Gamification
-- **Profil personnalisable** : Avatar emoji, nom, bio éditable
-- **18 Achievements** : Badges déblocables (séances, volume, streak, diversité, reps)
-- **Système de rang** : 🆕 Rookie → 🌱 Débutant → ⚡ Confirmé → 🔥 Expert → 💎 Élite → 🏆 Légende
-- **Évolution mensuelle** : Meilleur mois, moyenne mensuelle, ancienneté
+### Statistiques
+- Volume total, intensité moyenne (kg/rep), balance Push/Pull
+- Taux de progression sur 3 mois
+- Records personnels par exercice
+- Tendances semaine/mois comparatives
+- Graphiques Canvas interactifs multi-périodes (7j → 1an) avec tooltip tactile
 
-### 🎨 Interface & UX
-- **Thème dark optimisé** : Palette `#0f0f0f` / `#1f1f1f` avec accents violets
-- **Glassmorphism** : Navbar et header avec backdrop-filter
-- **Navigation fluide** : Bottom navbar avec FAB gradient + vibration haptique
-- **Toast notifications** : Feedback non-bloquant pour toutes les actions
-- **Swipe-to-close** : Geste pull-down pour fermer les overlays
-- **Greeting dynamique** : "Bonjour/Bon après-midi/Bonsoir, {nom}"
-- **Mobile-first responsive** : 6 breakpoints, safe areas iPhone, touch targets 44px+
-- **Lazy-loading** : Seul le dashboard est rendu au démarrage
+### Profil & Gamification
+- Avatar emoji, bio, rang dynamique (Rookie → Légende)
+- 18 achievements déblocables (séances, volume, streak, diversité, reps)
+- Évolution mensuelle (meilleur mois, moyenne, ancienneté)
 
-### 💾 Gestion des Données
-- **localStorage natif** : Persistance locale (`replift_data`) avec cache mémoire + memoization
-- **Export/Import JSON** : Backup avec validation stricte à l'import
-- **Générateur de données test** : 3 programmes + 36 séances sur 3 mois avec progression réaliste
-- **Reset sécurisé** : Double confirmation
-- **Migration automatique** : Fusion des clés localStorage legacy dans le store principal
+### UX/UI
+- Dark theme glassmorphism, bottom navbar avec FAB gradient
+- Swipe-to-close overlays, toast notifications, vibration haptique
+- Greeting dynamique, lazy-loading pages
+- Responsive 6 breakpoints, safe areas iPhone, touch targets 44px+
+
+### Données
+- Export/Import JSON (avec sanitisation XSS à l'import)
+- Générateur de données test (3 programmes, 36 séances réalistes)
+- Reset sécurisé (double confirmation)
+
+---
+
+## 🚀 Installation
+
+```bash
+git clone https://github.com/cmrabdu/Replift.git
+cd RepLift
+
+# Serveur local
+python3 -m http.server 8000
+# ou
+npx http-server -p 8000
+
+open http://localhost:8000
+```
+
+**Pas de compilation, pas de build.** Modifier → rafraîchir (F5).
+
+### Tests manuels
+1. Ouvrir en navigation privée
+2. Profil → "Générer données de test"
+3. Explorer dashboard, stats, graphiques, achievements
 
 ---
 
 ## 🏗️ Architecture
 
-### Structure des Fichiers
+### Fichiers
 ```
 RepLift/
-├── index.html         (644 lignes)  — Structure HTML, 8 overlays + onboarding
-├── style.css          (~2400 lignes) — Styles complets, dark theme, glassmorphism, responsive
-├── app.js             (2915 lignes) — Logique en 3 couches, onboarding, memoization, toast, timer
-├── capacitor.config.json — Configuration Capacitor (iOS/Android)
-├── package.json       — Dépendances Capacitor
-├── README.md          — Documentation complète
-├── TODO.md            — Roadmap et backlog
-├── EXPLICATIONS.md    — Guide technique Capacitor
-├── IOS_SETUP.md       — Guide déploiement iOS
-├── ONBOARDING.md      — Spécifications onboarding
-├── www/               — Build Capacitor (HTML/CSS/JS copiés)
-└── ios/               — Projet Xcode natif (généré par Capacitor)
+├── index.html          657L   Structure HTML, overlays, onboarding, SVG sprite
+├── style.css         3 685L   Dark theme, glassmorphism, responsive, animations
+├── app.js            3 195L   Logique 3 couches + packs + onboarding
+├── capacitor.config.json      Configuration Capacitor (iOS/Android)
+├── package.json               Métadonnées + dépendances Capacitor
+├── README.md                  Documentation
+├── TODO.md                    Roadmap
+├── EXPLICATIONS.md            Guide technique Capacitor
+├── IOS_SETUP.md               Guide déploiement iOS
+├── ONBOARDING.md              Spécifications onboarding
+├── www/                       Build Capacitor
+└── ios/                       Projet Xcode natif
 ```
 
-### Architecture Logique (app.js)
+### Couches logiques (app.js)
 
-#### 1️⃣ AppData — Couche de persistance
-Gestion localStorage avec **cache intégré** et migration automatique.
+#### Utilitaires globaux (L1-33)
+- `_uid()` — Générateur d'IDs anti-collision
+- `_sessionVolume(s)` / `_exerciseVolume(ex)` — Calcul volume DRY
+- `PROFILE_EMOJIS` — Constante partagée (onboarding + profil)
 
-**Méthodes principales** :
-- `load()` / `save(data)` / `clear()` : CRUD localStorage
-- `invalidateCache()` : Vide le cache AppData + AppStats memo
-- `getDefaultData()` : Structure par défaut avec version, programmes, sessions, user, recentAchievements
-- `addProgram()` / `updateProgram()` / `deleteProgram()` : CRUD programmes
-- `duplicateProgram(id)` : Clone un programme avec suffixe " (copie)"
-- `deleteProgramWithSessions(id)` : Supprime programme ET ses séances
-- `addSession()` / `deleteSession()` : CRUD séances
-- `getPrograms()` / `getSessions()` : Lecture avec cache
-- `getSessionById()` / `getProgramById()` / `getLastSessionForProgram()` : Lookups
+#### AppData — Persistance (L35-195)
+Cache mémoire `_cache` + localStorage. CRUD programmes/sessions, copies défensives.
 
-#### 2️⃣ AppStats — Couche de calcul (pur, memoized)
-Fonctions de calcul sans effets de bord, avec **memoization** via `_cached(key, fn)`.
+| Méthode | Rôle |
+|---|---|
+| `load()` / `save()` / `clear()` | CRUD localStorage |
+| `invalidateCache()` | Purge cache AppData + memo AppStats |
+| `saveRecentAchievements()` | Persiste les achievements récents |
+| `addProgram()` / `updateProgram()` / `deleteProgram()` | CRUD programmes |
+| `duplicateProgram()` / `deleteProgramWithSessions()` | Actions composées |
+| `addSession()` / `deleteSession()` | CRUD séances |
+| `getPrograms()` / `getSessions()` | Lecture avec copie défensive |
+| `saveActiveSession()` / `loadActiveSession()` / `clearActiveSession()` | Persistance session PWA |
 
-**Méthodes memoized** :
-- `getTotalVolume()` / `getTotalReps()` : Agrégats globaux (memoized)
-- `getPersonalRecords()` : Top 5 records par exercice (memoized)
-- `getWeeklyStreak()` : Semaines consécutives d'activité (memoized)
+#### AppStats — Calcul pur, mémoïsé (L197-900)
+Toutes les fonctions sont en **lecture seule** et **mémoïsées** via `_cached(key, fn)`. Le cache est invalidé par `clearMemo()` à chaque écriture dans AppData.
 
-**Méthodes standard** :
-- `getSessionsThisMonth()` / `getMonthlyVolume()` : Stats du mois
-- `get30DayProgression()` / `getPRsThisMonth()` / `getDaysSinceLastSession()` : Dashboard
-- `getCurrentStreak()` / `getUniqueExercises()` : Activité
-- `getAverageIntensity()` : Volume moyen par rep (kg/rep)
-- `getMuscleBalance()` : Ratio Push/Pull (22+ exercices reconnus par catégorie)
-- `getProgressionRate()` : Évolution % sur 3 mois
-- `getWeekStats()` / `getMonthVolumeComparison()` : Tendances comparatives
-- `getFavoriteExercises()` : Top 5 par fréquence
-- `getExercisesForEvolution()` / `getExerciseEvolution()` : Données graphiques
-- `getCalendarData()` : Données heatmap pour le calendrier
-- `getAchievements()` : 18 achievements avec état earned/locked
-- `getRecentAchievements()` : 3 derniers achievements (stockés dans données principales)
-- `getProfileSummary()` / `getProfileEvolution()` : Stats profil
-- `clearMemo()` : Invalidation du cache memoization
+| Catégorie | Fonctions |
+|---|---|
+| Compteurs | `getTotalSessions`, `getSessionsThisMonth`, `getTotalVolume`, `getTotalReps` |
+| Streaks | `getCurrentStreak`, `getWeeklyStreak` |
+| Tendances | `getWeekStats`, `getMonthVolumeComparison`, `get30DayProgression` |
+| Records | `getPersonalRecords`, `getPRsThisMonth` |
+| Analyse | `getAverageIntensity`, `getMuscleBalance`, `getProgressionRate` |
+| Dashboard | `getMonthlyVolume`, `getDaysSinceLastSession`, `getFavoriteExercises`, `getCalendarData` |
+| Exercices | `getUniqueExercises`, `getExercisesForEvolution`, `getExerciseEvolution` |
+| Profil | `getProfileSummary`, `getProfileEvolution` |
+| Gamification | `getAchievements` (18 badges), `getRecentAchievements` (pure, sans effet de bord) |
 
-#### 3️⃣ AppUI — Couche de présentation
-Gestion DOM, événements, rendu visuel, overlays, toast, timer.
+#### PROGRAM_PACKS — Données (L905-1085)
+15 packs structurés (Force / Hypertrophie / Endurance / Général / Perte de poids × 3 niveaux). Chaque pack contient N jours avec exercices pré-configurés.
 
-**Navigation & Core** :
-- `switchPage()` / `switchSeanceTab()` : Navigation pages et onglets
-- `openOverlay()` / `closeOverlay()` : Gestion des 7 overlays modaux
-- `setupSwipeToClose()` : Geste pull-down sur overlays
-- `updateGreeting()` : Greeting dynamique dans le header
-- `showToast(msg, duration)` : Notification non-bloquante
-- `$(id)` : Accès DOM null-safe
-
-**Dashboard** :
-- `updateDashboard()` : 7 métriques + calendrier
-- `renderCalendar()` / `navigateCalendar()` : Heatmap navigable
-
-**Programmes** :
-- `updatePrograms()` : Liste programmes avec stats
-- `openCreateProgram()` / `openEditProgram()` : Formulaire CRUD
-- `duplicateCurrentProgram()` : Duplication
-- `deleteCurrentProgram()` / `deleteCurrentProgramWithSessions()` : Suppression
-
-**Sessions** :
-- `openStartSession()` : Sélection programme + vibration
-- `startSession()` : Démarrage avec ghost data + timer
-- `saveSession()` : Sauvegarde (validation stricte, pas de placeholders)
-- `startSessionTimer()` / `stopSessionTimer()` : Chronomètre live
-
-**Historique** :
-- `updateHistorique()` : Liste paginée par mois
-- `navigateHistorique()` : Navigation ← →
-- `viewSession()` / `deleteCurrentSession()` : Détail et suppression
-
-**Stats & Graphiques** :
-- `updateStats()` : Rendu complet de la page Stats
-- `openExerciseChart()` / `drawExerciseChart()` : Graphiques Canvas avec tooltip tactile
-
-**Profil & Onboarding** :
-- `updateProfile()` : Avatar, rang, achievements, évolution
-- `openAllAchievements()` : Vue complète 18 achievements
-- `openEditProfile()` / `saveProfile()` : Édition profil
-- `checkOnboarding()` / `showOnboarding()` : Flow première utilisation
-- `onboardingNext()` / `onboardingPrev()` : Navigation écrans
-- `onboardingSelect()` / `onboardingFreq()` : Gestion sélections
-- `populateObEmojis()` / `pickObEmoji()` : Grille avatars
-- `finishOnboarding()` : Génération programmes starter + sauvegarde profil
-
-**Données** :
-- `exportData()` / `importData()` / `resetData()` / `generateTestData()`
+#### AppUI — Présentation (L1090-3175)
+Gestion DOM, événements, rendu, overlays, toast, timer, onboarding.
 
 ---
 
-## 📊 Structure de Données (localStorage)
+## 📊 Structure de données
 
-**Clé** : `replift_data`
+**Clé localStorage** : `replift_data`
 
-```javascript
+```json
 {
-  "version": "1.1.0",
-  "programs": [
-    {
-      "id": "1707567890123",
-      "nom": "Push Day",
-      "createdAt": "2026-02-10T10:00:00.000Z",
-      "exercices": [
-        {
-          "nom": "Développé Couché",
-          "series": [
-            { "poids": 80, "reps": 10 },
-            { "poids": 85, "reps": 8 },
-            { "poids": 85, "reps": 7 }
-          ]
-        }
-      ]
-    }
-  ],
-  "sessions": [
-    {
-      "id": "1707567891234",
-      "date": "2026-02-10T14:30:00.000Z",
-      "programId": "1707567890123",
-      "programName": "Push Day",
-      "exercices": [
-        {
-          "nom": "Développé Couché",
-          "series": [
-            { "poids": 82.5, "reps": 10 },
-            { "poids": 87.5, "reps": 8 }
-          ]
-        }
-      ]
-    }
-  ],
+  "version": "1.9.0",
+  "programs": [{
+    "id": "m1abc-xyz123456",
+    "nom": "Push Day",
+    "createdAt": "2026-02-10T10:00:00.000Z",
+    "exercices": [
+      { "nom": "Développé Couché", "series": [{ "poids": 80, "reps": 10 }] }
+    ]
+  }],
+  "sessions": [{
+    "id": "m1abd-def789012",
+    "date": "2026-02-10T14:30:00.000Z",
+    "programId": "m1abc-xyz123456",
+    "programName": "Push Day",
+    "exercices": [
+      { "nom": "Développé Couché", "series": [{ "poids": 82.5, "reps": 10 }] }
+    ]
+  }],
   "user": {
     "name": "Maxime",
-    "bio": "Push Pull Legs 6x/sem",
+    "bio": "PPL 6x/sem",
     "emoji": "🔥",
     "onboardingDone": true,
     "goal": "hypertrophy",
@@ -455,170 +195,169 @@ Gestion DOM, événements, rendu visuel, overlays, toast, timer.
   },
   "recentAchievements": [
     { "id": "vol5k", "icon": "💪", "title": "Volume Rookie", "desc": "5 000 kg soulevés", "earned": true }
-  ]
+  ],
+  "activeSession": null
 }
 ```
 
-### Notes sur les données
-- **version** : Champ de version pour migrations futures
-- **poids = 0** : Indique un exercice au poids du corps (affiché comme "PDC")
-- **IDs** : Timestamp en millisecondes pour unicité
-- **dates** : Format ISO 8601 UTC
-- **user** : Profil avec nom, bio, emoji avatar + préférences onboarding (goal, level, freq, onboardingDone)
-- **recentAchievements** : 3 derniers achievements débloqués (fusionnés dans le store principal depuis v1.1.0)
-- **Cache** : AppData maintient un cache mémoire + AppStats memoize les calculs lourds
-
----
-
-## 💻 Technologies
-
-### Stack
-- **HTML5** : Structure sémantique (293 lignes)
-- **CSS3** : Styles modernes (Grid, Flexbox, animations, variables)
-- **JavaScript ES6+** : Vanilla JS avec `'use strict'`, `const/let`, arrow functions
-- **Canvas API** : Graphiques d'évolution custom
-- **localStorage API** : Persistance locale avec cache optimisé
-
-### Caractéristiques techniques
-- ✅ **Zero dependencies** : Pas de frameworks, pas de build
-- ✅ **Performance optimale** : Cache en mémoire pour éviter JSON.parse répétés
-- ✅ **Sécurité** : Protection XSS avec échappement des attributs HTML
-- ✅ **Code quality** : Strict mode, pas de `var`, séparation des responsabilités
-- ✅ **Mobile-first** : Interface pensée pour utilisation en salle
-- ✅ **Offline-ready** : Fonctionne sans connexion (localStorage)
+| Champ | Note |
+|---|---|
+| `id` | Généré par `_uid()` (base36 timestamp + random) |
+| `poids: 0` | Exercice au poids du corps (affiché "PDC") |
+| `dates` | ISO 8601 UTC |
+| `recentAchievements` | Cache dérivé (max 3), supprimé à l'import pour sécurité |
 
 ---
 
 ## 🎨 Design System
 
-### Palette de Couleurs
-```css
---background:    #0f0f0f   /* Fond principal */
---surface:       #1f1f1f   /* Cartes et conteneurs */
---surface-dark:  #1a1a1a   /* Surfaces alternatives */
---border:        #333333   /* Bordures */
---text-primary:  #ffffff   /* Texte principal */
---text-muted:    #888888   /* Texte secondaire */
---accent:        #6a00ff   /* Violet (actions) */
---success:       #4ade80   /* Vert (progression positive) */
---danger:        #f87171   /* Rouge (actions destructives) */
+### Palette
+```
+Background    #0f0f0f     Surface       #1f1f1f
+Border        #333333     Text          #ffffff
+Text muted    #888888     Accent        #6a00ff (violet)
+Success       #4ade80     Danger        #f87171
 ```
 
 ### Layout
-- **Container principal** : Max-width 600px centré
-- **Grid responsive** : 2 colonnes pour stats cards
-- **Bottom navigation** : 80px fixe avec FAB centrale
-- **Overlays** : Full-screen avec animation slide-up
-- **Padding** : 20px standard, 16px cards
+- Container : max-width 600px centré
+- Bottom nav : 80px fixe + FAB gradient central
+- Overlays : full-screen slide-up
+- Grid stats : 2 colonnes responsive
 
 ### Typographie
-- **Font** : System fonts (-apple-system, Segoe UI, Helvetica)
-- **Page title** : 1.3em bold
-- **Card title** : 1.1em bold
-- **Body** : 1em (16px base)
-- **Labels** : 0.85em uppercase
-
----
-
-## 🚀 Installation & Développement
-
-### Lancement rapide
-```bash
-# Cloner le projet
-git clone <repo-url>
-cd RepLift
-
-# Serveur local (Python)
-python3 -m http.server 8000
-
-# Ou avec Node.js
-npx http-server -p 8000
-
-# Ouvrir dans le navigateur
-open http://localhost:8000
-```
-
-### Structure de développement
-```
-1. index.html  → Structure (pas de code inline)
-2. style.css   → Styles complets et organisés
-3. app.js      → Logique en 3 couches (Data/Stats/UI)
-```
-
-**Workflow** :
-1. Modifier les fichiers directement
-2. Rafraîchir le navigateur (F5)
-3. Pas de compilation, pas de build
-
-### Tests manuels
-1. Ouvrir l'app en navigation privée (localStorage vide)
-2. Aller dans Profil > "Générer données de test"
-3. Explorer toutes les pages et fonctionnalités
-4. Vérifier les graphiques avec différentes périodes
+- System fonts (-apple-system, Segoe UI, Helvetica)
+- Tailles fluides via `clamp()` (320px → 1200px)
 
 ---
 
 ## 📦 Déploiement
 
-### Production
-L'application est **production-ready** sans build step :
-- Upload des 3 fichiers (`index.html`, `style.css`, `app.js`) sur n'importe quel serveur statique
-- Compatible avec : GitHub Pages, Netlify, Vercel, AWS S3, nginx, Apache
+### Web (production-ready sans build)
+Upload `index.html` + `style.css` + `app.js` sur tout serveur statique :
+GitHub Pages, Netlify, Vercel, AWS S3, nginx, Apache.
 
-### Optimisations possibles (optionnelles)
-- Minification CSS/JS (réduction ~30%)
-- Service Worker pour PWA offline-first
-- Compression Gzip/Brotli serveur
+### iOS (via Capacitor)
+Voir [IOS_SETUP.md](IOS_SETUP.md) et [EXPLICATIONS.md](EXPLICATIONS.md).
 
 ---
 
-## 🐛 Corrections Historiques (Février 2026)
+## 🔢 Versioning & Changelog
 
-### v1.6.0 — Onboarding
-- ✅ **Première utilisation** : Flow complet pour nouveaux utilisateurs
-- ✅ **Programmes starter** : Génération automatique selon profil
-- ✅ **Emoji picker** : Grille interactive 28 emojis
+Semantic Versioning : `MAJOR.MINOR.PATCH`
 
-### v1.1.1 — Bugfixes mobile critiques
-- ✅ **Swipe-to-close** : Refonte complète des listeners, threshold augmenté, détection horizontale
-- ✅ **Chart tooltip** : Bind-once pattern pour éviter listener stacking
-- ✅ **Cleanup overlays** : Fermeture cohérente avec tooltip hide
+| Type | Quand |
+|---|---|
+| **MAJOR** | Breaking change (format données, refonte archi, suppression feature) |
+| **MINOR** | Nouvelle fonctionnalité sans casser l'existant |
+| **PATCH** | Bug fix, optimisation, nettoyage interne |
 
-### v1.1.0 — Audit complet
-- ✅ **saveSession** auto-remplissage fantôme (placeholder utilisé comme valeur réelle)
-- ✅ **Balance musculaire** liste Push/Pull trop courte → enrichie (22+ exercices)
-- ✅ **recentAchievements** isolé en clé séparée → fusionné dans données principales
-- ✅ **CSS variables** `--color-primary`, `--fs-xs/sm/base` non définies → ajoutées à `:root`
-- ✅ **CSS mort** `.favorites-*` supprimé
-- ✅ **Import données** validation insuffisante → typage strict
-- ✅ **alert() natifs** → remplacés par toast notifications
+---
 
-### v1.0.1 — Responsive
-- ✅ iOS zoom sur inputs (font-size: 16px)
-- ✅ generateTestData localStorage keys fix
-- ✅ XSS via noms d'exercices
-- ✅ Memory leak exportData
-- ✅ Cache AppData, CSS dédupliqué, code modernisé
+### v1.9.0 — 16 Février 2026
 
-### v1.0.0 — Release initiale
-- ✅ Architecture 3 couches, programmes, sessions, stats, graphiques Canvas
+*Audit qualité — Sécurité, architecture, performance, nettoyage*
+
+**Corrections critiques**
+- 🔴 **`_uid()` complet** : `generateTestData()` utilise désormais `_uid()` au lieu de `Date.now().toString()`
+- 🔴 **XSS import** : `importData()` supprime `recentAchievements` du JSON importé (recalculé depuis les données)
+- 🔴 **AppStats pure** : `getRecentAchievements()` n'écrit plus dans AppData — l'écriture est déléguée à `AppUI.updateStats()` via `AppData.saveRecentAchievements()`
+
+**Performance — Mémoïsation complète**
+- ⚡ **22 fonctions AppStats mémoïsées** via `_cached()` (4 avant → 22 après)
+- ⚡ Nouvelles clés : `totalSessions`, `currentStreak`, `uniqueExercises`, `achievements`, `weekStats`, `monthVolumeComparison`, `favoriteExercises`, `sessionsThisMonth`, `profileSummary`, `profileEvolution`, `exercisesForEvolution`, `monthlyVolume`, `30dayProgression`, `prsThisMonth`, `calendar_Y_M`, `averageIntensity`, `muscleBalance`, `progressionRate`
+- ⚡ **Double `getSessions()` corrigé** dans `getWeekStats()` (1 copie au lieu de 2)
+
+**Nettoyage**
+- 🟢 3 `.card:hover` morts supprimés des @media queries CSS
+- 🟢 4 fonctions mortes supprimées d'AppStats (`getMaxWeight`, `getBestExercise`, `getLastSession`, `getAverageVolumePerSession`)
+- 🟢 Nouvelle méthode `AppData.saveRecentAchievements()`
+
+---
+
+### v1.8.0 — 15 Février 2026
+
+*Audit qualité — 9 corrections critiques et refactoring DRY*
+
+**Corrections critiques**
+- 🔴 UUID anti-collision : `_uid()` remplace `Date.now().toString()`
+- 🔴 Invalidation mémo : `clearMemo()` dans `save()`
+
+**Corrections importantes**
+- 🟠 DRY volume : `_sessionVolume()` / `_exerciseVolume()` — 8 duplications éliminées
+- 🟠 Perf programmes : pré-indexation `sessCountMap` (O(n) → O(n+m))
+- 🟠 `deleteSeriesRow()` centralisé
+- 🟠 CSS mort ~60 lignes `.card` retirées
+- 🟠 `PROFILE_EMOJIS` partagé, `PROGRAM_PACKS` externalisé
+- 🟠 Copies défensives `getSessions()` / `getPrograms()`
+
+---
+
+### v1.7.0 — 15 Février 2026
+
+*Système de packs de programmes structurés*
+
+- 15 packs professionnels (5 catégories × 3 niveaux)
+- Overlay "Programmes préfaits" avec filtrage catégorie/niveau
+- Onboarding amélioré : sélection de packs complets
+
+---
+
+### v1.6.0 — 15 Février 2026
+
+*Onboarding complet pour nouveaux utilisateurs*
+
+- Flow 6 écrans interactifs (objectif, niveau, profil, fréquence, programmes)
+- Génération automatique de programmes starter selon profil
+- Grille emoji interactive (28 avatars)
+
+---
+
+### v1.1.1 — 12 Février 2026
+
+- Refonte swipe-to-close (threshold 180px, détection horizontale)
+- Fix chart tooltip listener stacking (bind-once pattern)
+
+---
+
+### v1.1.0 — 11 Février 2026
+
+*Refonte majeure — Dashboard, stats, profil, achievements*
+
+- Dashboard 7 métriques + calendrier heatmap
+- Page Stats complète avec graphiques Canvas
+- Profil avec 18 achievements et système de rang
+- Toast notifications, timer session, swipe-to-close, historique paginé
+- Memoization AppStats, lazy-loading, migration données
+
+---
+
+### v1.0.1 — 10 Février 2026
+
+- Responsive complet, 48 CSS variables, typographie fluide, safe areas iOS
+
+---
+
+### v1.0.0 — 10 Février 2026
+
+- Release initiale : programmes, sessions, stats, graphiques Canvas, architecture 3 couches
 
 ---
 
 ## 📋 Roadmap
 
-Voir [TODO.md](TODO.md) pour la liste complète des fonctionnalités prévues.
+Voir [TODO.md](TODO.md).
 
-### Prochaines priorités
-1. **Publication App Store iOS** : Build Xcode, icônes, screenshots, soumission
-2. **PWA complète** : Manifest + Service Worker pour installation web
-3. **Chronomètre de repos** : Timer entre séries avec notifications
-4. **Mode clair** : Toggle dark/light theme
-5. **Notes par séance** : Champ commentaire libre
-6. **Tests unitaires** : AppData et AppStats coverage
+**Prochaines priorités** :
+1. Publication App Store iOS
+2. PWA complète (Manifest + Service Worker)
+3. Chronomètre de repos entre séries
+4. Mode clair
+5. Notes par séance
+6. Tests unitaires (AppData + AppStats)
 
 ---
 
 ## 📄 Licence
 
-MIT — Utilisation libre
+MIT

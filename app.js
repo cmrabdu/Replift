@@ -1,6 +1,6 @@
 'use strict';
 
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.9.0';
 
 // Collision-resistant unique ID generator
 function _uid() {
@@ -77,6 +77,12 @@ const AppData = {
   invalidateCache() {
     this._cache = null;
     AppStats.clearMemo();
+  },
+
+  saveRecentAchievements(achievements) {
+    const data = this.load();
+    data.recentAchievements = achievements;
+    this.save(data);
   },
 
   clear() {
@@ -207,77 +213,46 @@ const AppStats = {
   },
 
   getTotalSessions() {
-    return AppData.getSessions().length;
+    return this._cached('totalSessions', () => AppData.getSessions().length);
   },
 
   getSessionsThisMonth() {
-    const now = new Date();
-    return AppData.getSessions().filter(s => {
-      const d = new Date(s.date);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }).length;
+    return this._cached('sessionsThisMonth', () => {
+      const now = new Date();
+      return AppData.getSessions().filter(s => {
+        const d = new Date(s.date);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      }).length;
+    });
   },
 
   getCurrentStreak() {
-    const sessions = AppData.getSessions();
-    if (!sessions.length) return 0;
+    return this._cached('currentStreak', () => {
+      const sessions = AppData.getSessions();
+      if (!sessions.length) return 0;
 
-    const days = [...new Set(sessions.map(s => {
-      const d = new Date(s.date);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime();
-    }))].sort((a, b) => b - a);
+      const days = [...new Set(sessions.map(s => {
+        const d = new Date(s.date);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime();
+      }))].sort((a, b) => b - a);
 
-    let streak = 0;
-    const check = new Date();
-    check.setHours(0, 0, 0, 0);
-    if (days[0] !== check.getTime()) {
-      check.setDate(check.getDate() - 1);
-    }
-    for (const day of days) {
-      if (day === check.getTime()) {
-        streak++;
+      let streak = 0;
+      const check = new Date();
+      check.setHours(0, 0, 0, 0);
+      if (days[0] !== check.getTime()) {
         check.setDate(check.getDate() - 1);
-      } else if (day < check.getTime()) {
-        break;
       }
-    }
-    return streak;
-  },
-
-  getMaxWeight() {
-    let max = 0;
-    AppData.getSessions().forEach(s => {
-      (s.exercices || []).forEach(ex => {
-        (ex.series || []).forEach(sr => {
-          const w = Number(sr.poids);
-          if (w > max) max = w;
-        });
-      });
+      for (const day of days) {
+        if (day === check.getTime()) {
+          streak++;
+          check.setDate(check.getDate() - 1);
+        } else if (day < check.getTime()) {
+          break;
+        }
+      }
+      return streak;
     });
-    return max > 0 ? max + ' kg' : '-';
-  },
-
-  getBestExercise() {
-    const count = {};
-    AppData.getSessions().forEach(s => {
-      (s.exercices || []).forEach(ex => {
-        if (ex.nom) count[ex.nom] = (count[ex.nom] || 0) + 1;
-      });
-    });
-    let best = '-';
-    let max = 0;
-    for (const [name, c] of Object.entries(count)) {
-      if (c > max) { max = c; best = name; }
-    }
-    return best;
-  },
-
-  getLastSession() {
-    const sessions = AppData.getSessions();
-    if (!sessions.length) return '-';
-    const sorted = [...sessions].sort((a, b) => new Date(b.date) - new Date(a.date));
-    return new Date(sorted[0].date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
   },
 
   // === Volume & Performance ===
@@ -301,19 +276,16 @@ const AppStats = {
     });
   },
 
-  getAverageVolumePerSession() {
-    const count = AppData.getSessions().length;
-    return count > 0 ? Math.round(this.getTotalVolume() / count) : 0;
-  },
-
   getUniqueExercises() {
-    const exercises = new Set();
-    AppData.getSessions().forEach(s => {
-      (s.exercices || []).forEach(ex => {
-        if (ex.nom) exercises.add(ex.nom);
+    return this._cached('uniqueExercises', () => {
+      const exercises = new Set();
+      AppData.getSessions().forEach(s => {
+        (s.exercices || []).forEach(ex => {
+          if (ex.nom) exercises.add(ex.nom);
+        });
       });
+      return exercises.size;
     });
-    return exercises.size;
   },
 
   getPersonalRecords() {
@@ -337,61 +309,69 @@ const AppStats = {
   },
 
   getWeekStats() {
-    const now = new Date();
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    return this._cached('weekStats', () => {
+      const now = new Date();
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
-    const thisWeek = AppData.getSessions().filter(s => new Date(s.date) >= weekAgo).length;
-    const lastWeek = AppData.getSessions().filter(s => {
-      const d = new Date(s.date);
-      return d >= twoWeeksAgo && d < weekAgo;
-    }).length;
+      const sessions = AppData.getSessions();
+      const thisWeek = sessions.filter(s => new Date(s.date) >= weekAgo).length;
+      const lastWeek = sessions.filter(s => {
+        const d = new Date(s.date);
+        return d >= twoWeeksAgo && d < weekAgo;
+      }).length;
 
-    return { thisWeek, change: thisWeek - lastWeek };
+      return { thisWeek, change: thisWeek - lastWeek };
+    });
   },
 
   getMonthVolumeComparison() {
-    const now = new Date();
-    const thisMonth = now.getMonth();
-    const thisYear = now.getFullYear();
+    return this._cached('monthVolumeComparison', () => {
+      const now = new Date();
+      const thisMonth = now.getMonth();
+      const thisYear = now.getFullYear();
 
-    let thisMonthVolume = 0;
-    let lastMonthVolume = 0;
+      let thisMonthVolume = 0;
+      let lastMonthVolume = 0;
 
-    AppData.getSessions().forEach(s => {
-      const d = new Date(s.date);
-      const sessionVolume = _sessionVolume(s);
+      AppData.getSessions().forEach(s => {
+        const d = new Date(s.date);
+        const sessionVolume = _sessionVolume(s);
 
-      if (d.getFullYear() === thisYear && d.getMonth() === thisMonth) {
-        thisMonthVolume += sessionVolume;
-      } else if (
-        (d.getFullYear() === thisYear && d.getMonth() === thisMonth - 1) ||
-        (thisMonth === 0 && d.getFullYear() === thisYear - 1 && d.getMonth() === 11)
-      ) {
-        lastMonthVolume += sessionVolume;
-      }
+        if (d.getFullYear() === thisYear && d.getMonth() === thisMonth) {
+          thisMonthVolume += sessionVolume;
+        } else if (
+          (d.getFullYear() === thisYear && d.getMonth() === thisMonth - 1) ||
+          (thisMonth === 0 && d.getFullYear() === thisYear - 1 && d.getMonth() === 11)
+        ) {
+          lastMonthVolume += sessionVolume;
+        }
+      });
+
+      const changePercent = lastMonthVolume > 0
+        ? Math.round(((thisMonthVolume - lastMonthVolume) / lastMonthVolume) * 100)
+        : 0;
+
+      return { volume: thisMonthVolume, changePercent };
     });
-
-    const changePercent = lastMonthVolume > 0
-      ? Math.round(((thisMonthVolume - lastMonthVolume) / lastMonthVolume) * 100)
-      : 0;
-
-    return { volume: thisMonthVolume, changePercent };
   },
 
   getFavoriteExercises() {
-    const count = {};
-    AppData.getSessions().forEach(s => {
-      (s.exercices || []).forEach(ex => {
-        if (ex.nom) count[ex.nom] = (count[ex.nom] || 0) + 1;
+    return this._cached('favoriteExercises', () => {
+      const count = {};
+      AppData.getSessions().forEach(s => {
+        (s.exercices || []).forEach(ex => {
+          if (ex.nom) count[ex.nom] = (count[ex.nom] || 0) + 1;
+        });
       });
+      return Object.entries(count)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5);
     });
-    return Object.entries(count)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5);
   },
 
   getAchievements() {
+    return this._cached('achievements', () => {
     const sessions = AppData.getSessions().length;
     const volume = this.getTotalVolume();
     const streak = this.getCurrentStreak();
@@ -428,87 +408,93 @@ const AppStats = {
       { id: 'reps1k', icon: '🔢', title: 'Mille Reps', desc: '1 000 répétitions', earned: totalReps >= 1000, req: '1 000 reps' },
       { id: 'reps5k', icon: '💯', title: 'Rep Machine', desc: '5 000 répétitions', earned: totalReps >= 5000, req: '5 000 reps' },
     ];
+    });
   },
 
   // === Profile Stats ===
   getProfileSummary() {
-    const sessions = AppData.getSessions();
-    const totalSessions = sessions.length;
-    const totalVolume = this.getTotalVolume();
-    const totalPRs = this.getPersonalRecords().length;
-    const weeklyStreak = this.getWeeklyStreak();
+    return this._cached('profileSummary', () => {
+      const sessions = AppData.getSessions();
+      const totalSessions = sessions.length;
+      const totalVolume = this.getTotalVolume();
+      const totalPRs = this.getPersonalRecords().length;
+      const weeklyStreak = this.getWeeklyStreak();
 
-    // Days since first session
-    let activeDays = 0;
-    if (totalSessions > 0) {
-      const sorted = [...sessions].sort((a, b) => new Date(a.date) - new Date(b.date));
-      const firstDate = new Date(sorted[0].date);
-      const now = new Date();
-      activeDays = Math.floor((now - firstDate) / (1000 * 60 * 60 * 24));
-    }
+      // Days since first session
+      let activeDays = 0;
+      if (totalSessions > 0) {
+        const sorted = [...sessions].sort((a, b) => new Date(a.date) - new Date(b.date));
+        const firstDate = new Date(sorted[0].date);
+        const now = new Date();
+        activeDays = Math.floor((now - firstDate) / (1000 * 60 * 60 * 24));
+      }
 
-    return { totalSessions, totalVolume, totalPRs, weeklyStreak, activeDays };
+      return { totalSessions, totalVolume, totalPRs, weeklyStreak, activeDays };
+    });
   },
 
   getProfileEvolution() {
-    const sessions = AppData.getSessions();
-    const now = new Date();
+    return this._cached('profileEvolution', () => {
+      const sessions = AppData.getSessions();
+      const now = new Date();
 
-    // Monthly volumes for last 12 months
-    const months = [];
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const month = d.getMonth();
-      const year = d.getFullYear();
+      // Monthly volumes for last 12 months
+      const months = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const month = d.getMonth();
+        const year = d.getFullYear();
 
-      let volume = 0;
-      let count = 0;
-      sessions.forEach(s => {
-        const sd = new Date(s.date);
-        if (sd.getMonth() === month && sd.getFullYear() === year) {
-          count++;
-          volume += _sessionVolume(s);
-        }
-      });
+        let volume = 0;
+        let count = 0;
+        sessions.forEach(s => {
+          const sd = new Date(s.date);
+          if (sd.getMonth() === month && sd.getFullYear() === year) {
+            count++;
+            volume += _sessionVolume(s);
+          }
+        });
 
-      months.push({ month, year, volume, count });
-    }
+        months.push({ month, year, volume, count });
+      }
 
-    // Best month
-    const bestMonth = months.reduce((best, m) => m.volume > best.volume ? m : best, { volume: 0 });
-    // Average monthly volume (only months with activity)
-    const activeMonths = months.filter(m => m.volume > 0);
-    const avgMonthlyVolume = activeMonths.length > 0
-      ? Math.round(activeMonths.reduce((sum, m) => sum + m.volume, 0) / activeMonths.length)
-      : 0;
+      // Best month
+      const bestMonth = months.reduce((best, m) => m.volume > best.volume ? m : best, { volume: 0 });
+      // Average monthly volume (only months with activity)
+      const activeMonths = months.filter(m => m.volume > 0);
+      const avgMonthlyVolume = activeMonths.length > 0
+        ? Math.round(activeMonths.reduce((sum, m) => sum + m.volume, 0) / activeMonths.length)
+        : 0;
 
-    return { months, bestMonth, avgMonthlyVolume };
+      return { months, bestMonth, avgMonthlyVolume };
+    });
   },
 
   // === Évolution des exercices ===
   getExercisesForEvolution() {
-    const exercises = {};
-    AppData.getSessions().forEach(session => {
-      (session.exercices || []).forEach(ex => {
-        if (!ex.nom) return;
-        if (!exercises[ex.nom]) {
-          exercises[ex.nom] = { name: ex.nom, sessions: [] };
-        }
-        const maxWeight = Math.max(0, ...(ex.series || []).map(sr => Number(sr.poids) || 0));
-        const totalReps = (ex.series || []).reduce((sum, sr) => sum + (Number(sr.reps) || 0), 0);
-        if (maxWeight > 0) {
-          exercises[ex.nom].sessions.push({
-            date: session.date,
-            weight: maxWeight,
-            reps: totalReps,
-            volume: _exerciseVolume(ex)
-          });
-        }
+    return this._cached('exercisesForEvolution', () => {
+      const exercises = {};
+      AppData.getSessions().forEach(session => {
+        (session.exercices || []).forEach(ex => {
+          if (!ex.nom) return;
+          if (!exercises[ex.nom]) {
+            exercises[ex.nom] = { name: ex.nom, sessions: [] };
+          }
+          const maxWeight = Math.max(0, ...(ex.series || []).map(sr => Number(sr.poids) || 0));
+          const totalReps = (ex.series || []).reduce((sum, sr) => sum + (Number(sr.reps) || 0), 0);
+          if (maxWeight > 0) {
+            exercises[ex.nom].sessions.push({
+              date: session.date,
+              weight: maxWeight,
+              reps: totalReps,
+              volume: _exerciseVolume(ex)
+            });
+          }
+        });
       });
-    });
 
-    return Object.values(exercises)
-      .filter(ex => ex.sessions.length >= 2)
+      return Object.values(exercises)
+        .filter(ex => ex.sessions.length >= 2)
       .map(ex => {
         ex.sessions.sort((a, b) => new Date(a.date) - new Date(b.date));
         const first = ex.sessions[0];
@@ -523,6 +509,7 @@ const AppStats = {
         return ex;
       })
       .sort((a, b) => b.sessionsCount - a.sessionsCount);
+    });
   },
 
   getExerciseEvolution(exerciseName, period = '30d') {
@@ -579,68 +566,74 @@ const AppStats = {
 
   // === Dashboard New Stats ===
   getMonthlyVolume() {
-    const now = new Date();
-    let volume = 0;
-    AppData.getSessions().forEach(s => {
-      const d = new Date(s.date);
-      if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
-        volume += _sessionVolume(s);
-      }
+    return this._cached('monthlyVolume', () => {
+      const now = new Date();
+      let volume = 0;
+      AppData.getSessions().forEach(s => {
+        const d = new Date(s.date);
+        if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+          volume += _sessionVolume(s);
+        }
+      });
+      return volume;
     });
-    return volume;
   },
 
   get30DayProgression() {
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    return this._cached('30dayProgression', () => {
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
-    let current30Volume = 0;
-    let previous30Volume = 0;
+      let current30Volume = 0;
+      let previous30Volume = 0;
 
-    AppData.getSessions().forEach(s => {
-      const d = new Date(s.date);
-      const sessionVolume = _sessionVolume(s);
+      AppData.getSessions().forEach(s => {
+        const d = new Date(s.date);
+        const sessionVolume = _sessionVolume(s);
 
-      if (d >= thirtyDaysAgo) {
-        current30Volume += sessionVolume;
-      } else if (d >= sixtyDaysAgo && d < thirtyDaysAgo) {
-        previous30Volume += sessionVolume;
-      }
+        if (d >= thirtyDaysAgo) {
+          current30Volume += sessionVolume;
+        } else if (d >= sixtyDaysAgo && d < thirtyDaysAgo) {
+          previous30Volume += sessionVolume;
+        }
+      });
+
+      if (previous30Volume === 0) return current30Volume > 0 ? '+100%' : '-';
+      const percent = Math.round(((current30Volume - previous30Volume) / previous30Volume) * 100);
+      return `${percent >= 0 ? '+' : ''}${percent}%`;
     });
-
-    if (previous30Volume === 0) return current30Volume > 0 ? '+100%' : '-';
-    const percent = Math.round(((current30Volume - previous30Volume) / previous30Volume) * 100);
-    return `${percent >= 0 ? '+' : ''}${percent}%`;
   },
 
   getPRsThisMonth() {
-    const now = new Date();
-    const records = {};
-    const newRecords = [];
+    return this._cached('prsThisMonth', () => {
+      const now = new Date();
+      const records = {};
+      const newRecords = [];
 
-    // Build all-time records
-    AppData.getSessions().forEach(s => {
-      (s.exercices || []).forEach(ex => {
-        if (!ex.nom) return;
-        const maxWeight = Math.max(0, ...(ex.series || []).map(sr => Number(sr.poids) || 0));
-        if (maxWeight > 0) {
-          if (!records[ex.nom] || maxWeight > records[ex.nom].weight) {
-            records[ex.nom] = { weight: maxWeight, date: s.date };
+      // Build all-time records
+      AppData.getSessions().forEach(s => {
+        (s.exercices || []).forEach(ex => {
+          if (!ex.nom) return;
+          const maxWeight = Math.max(0, ...(ex.series || []).map(sr => Number(sr.poids) || 0));
+          if (maxWeight > 0) {
+            if (!records[ex.nom] || maxWeight > records[ex.nom].weight) {
+              records[ex.nom] = { weight: maxWeight, date: s.date };
+            }
           }
+        });
+      });
+
+      // Count PRs set this month
+      Object.values(records).forEach(record => {
+        const d = new Date(record.date);
+        if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+          newRecords.push(record);
         }
       });
-    });
 
-    // Count PRs set this month
-    Object.values(records).forEach(record => {
-      const d = new Date(record.date);
-      if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
-        newRecords.push(record);
-      }
+      return newRecords.length;
     });
-
-    return newRecords.length;
   },
 
   getDaysSinceLastSession() {
@@ -692,6 +685,7 @@ const AppStats = {
   },
 
   getCalendarData(year, month) {
+    return this._cached('calendar_' + year + '_' + month, () => {
     // Build volume map: dayKey → total volume (kg) for the given month
     const volumeMap = {};
     
@@ -764,113 +758,115 @@ const AppStats = {
     ).size;
 
     return { days, totalVolume, sessionCount, year, month };
+    });
   },
 
   // === Strategic Metrics ===
   getAverageIntensity() {
-    let totalWeightedReps = 0;
-    let totalReps = 0;
-    
-    AppData.getSessions().forEach(s => {
-      (s.exercices || []).forEach(ex => {
-        (ex.series || []).forEach(sr => {
-          const poids = Number(sr.poids) || 0;
-          const reps = Number(sr.reps) || 0;
-          totalWeightedReps += poids * reps;
-          totalReps += reps;
+    return this._cached('averageIntensity', () => {
+      let totalWeightedReps = 0;
+      let totalReps = 0;
+      
+      AppData.getSessions().forEach(s => {
+        (s.exercices || []).forEach(ex => {
+          (ex.series || []).forEach(sr => {
+            const poids = Number(sr.poids) || 0;
+            const reps = Number(sr.reps) || 0;
+            totalWeightedReps += poids * reps;
+            totalReps += reps;
+          });
         });
       });
+      
+      return totalReps > 0 ? Math.round(totalWeightedReps / totalReps) : 0;
     });
-    
-    return totalReps > 0 ? Math.round(totalWeightedReps / totalReps) : 0;
   },
 
   getMuscleBalance() {
-    const pushExercises = ['développé couché', 'développé incliné', 'dips', 'pompes', 'développé militaire', 'développé haltère', 'bench press', 'bench', 'overhead press', 'ohp', 'push up', 'push-up', 'élévations latérales', 'latérales', 'extensions triceps', 'triceps', 'skull crusher', 'pec fly', 'pec deck', 'écartés', 'fly', 'military press', 'press épaules', 'shoulder press'];
-    const pullExercises = ['tractions', 'rowing', 'tirage horizontal', 'tirage vertical', 'curl', 'pull up', 'pull-up', 'chin up', 'deadlift', 'face pull', 'facepull', 'lat pulldown', 'poulie haute', 'poulie basse', 'shrug', 'soulevé de terre', 'row', 'barbell row', 'dumbbell row', 'biceps', 'hammer curl', 'tirage', 'pull'];
-    
-    let pushCount = 0;
-    let pullCount = 0;
-    
-    AppData.getSessions().forEach(s => {
-      (s.exercices || []).forEach(ex => {
-        const exerciseName = (ex.nom || '').toLowerCase();
-        if (pushExercises.some(pe => exerciseName.includes(pe))) {
-          pushCount += (ex.series || []).length;
-        } else if (pullExercises.some(pe => exerciseName.includes(pe))) {
-          pullCount += (ex.series || []).length;
-        }
-      });
-    });
-    
-    const total = pushCount + pullCount;
-    if (total === 0) return 'Équilibré';
-    
-    const pushRatio = Math.round((pushCount / total) * 100);
-    if (pushRatio >= 60) return 'Push dominant';
-    if (pushRatio <= 40) return 'Pull dominant';
-    return 'Équilibré';
-  },
-
-  getProgressionRate() {
-    // Calculate average monthly progression rate across all exercises with PRs
-    const now = new Date();
-    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-    
-    const exerciseProgress = {};
-    
-    AppData.getSessions()
-      .filter(s => new Date(s.date) >= threeMonthsAgo)
-      .forEach(s => {
-        const sessionDate = new Date(s.date);
+    return this._cached('muscleBalance', () => {
+      const pushExercises = ['développé couché', 'développé incliné', 'dips', 'pompes', 'développé militaire', 'développé haltère', 'bench press', 'bench', 'overhead press', 'ohp', 'push up', 'push-up', 'élévations latérales', 'latérales', 'extensions triceps', 'triceps', 'skull crusher', 'pec fly', 'pec deck', 'écartés', 'fly', 'military press', 'press épaules', 'shoulder press'];
+      const pullExercises = ['tractions', 'rowing', 'tirage horizontal', 'tirage vertical', 'curl', 'pull up', 'pull-up', 'chin up', 'deadlift', 'face pull', 'facepull', 'lat pulldown', 'poulie haute', 'poulie basse', 'shrug', 'soulevé de terre', 'row', 'barbell row', 'dumbbell row', 'biceps', 'hammer curl', 'tirage', 'pull'];
+      
+      let pushCount = 0;
+      let pullCount = 0;
+      
+      AppData.getSessions().forEach(s => {
         (s.exercices || []).forEach(ex => {
-          if (!ex.nom) return;
-          const maxWeight = Math.max(0, ...(ex.series || []).map(sr => Number(sr.poids) || 0));
-          if (maxWeight > 0) {
-            if (!exerciseProgress[ex.nom]) {
-              exerciseProgress[ex.nom] = [];
-            }
-            exerciseProgress[ex.nom].push({ date: sessionDate, weight: maxWeight });
+          const exerciseName = (ex.nom || '').toLowerCase();
+          if (pushExercises.some(pe => exerciseName.includes(pe))) {
+            pushCount += (ex.series || []).length;
+          } else if (pullExercises.some(pe => exerciseName.includes(pe))) {
+            pullCount += (ex.series || []).length;
           }
         });
       });
-    
-    let totalProgressRates = [];
-    Object.values(exerciseProgress).forEach(sessions => {
-      if (sessions.length >= 2) {
-        sessions.sort((a, b) => a.date - b.date);
-        const first = sessions[0];
-        const last = sessions[sessions.length - 1];
-        const monthsDiff = (last.date - first.date) / (1000 * 60 * 60 * 24 * 30);
-        if (monthsDiff > 0) {
-          const monthlyRate = ((last.weight - first.weight) / first.weight) * 100 / monthsDiff;
-          totalProgressRates.push(monthlyRate);
-        }
-      }
+      
+      const total = pushCount + pullCount;
+      if (total === 0) return 'Équilibré';
+      
+      const pushRatio = Math.round((pushCount / total) * 100);
+      if (pushRatio >= 60) return 'Push dominant';
+      if (pushRatio <= 40) return 'Pull dominant';
+      return 'Équilibré';
     });
-    
-    if (totalProgressRates.length === 0) return 0;
-    const avgRate = totalProgressRates.reduce((a, b) => a + b, 0) / totalProgressRates.length;
-    return Math.round(avgRate);
+  },
+
+  getProgressionRate() {
+    return this._cached('progressionRate', () => {
+      // Calculate average monthly progression rate across all exercises with PRs
+      const now = new Date();
+      const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+      
+      const exerciseProgress = {};
+      
+      AppData.getSessions()
+        .filter(s => new Date(s.date) >= threeMonthsAgo)
+        .forEach(s => {
+          const sessionDate = new Date(s.date);
+          (s.exercices || []).forEach(ex => {
+            if (!ex.nom) return;
+            const maxWeight = Math.max(0, ...(ex.series || []).map(sr => Number(sr.poids) || 0));
+            if (maxWeight > 0) {
+              if (!exerciseProgress[ex.nom]) {
+                exerciseProgress[ex.nom] = [];
+              }
+              exerciseProgress[ex.nom].push({ date: sessionDate, weight: maxWeight });
+            }
+          });
+        });
+      
+      let totalProgressRates = [];
+      Object.values(exerciseProgress).forEach(sessions => {
+        if (sessions.length >= 2) {
+          sessions.sort((a, b) => a.date - b.date);
+          const first = sessions[0];
+          const last = sessions[sessions.length - 1];
+          const monthsDiff = (last.date - first.date) / (1000 * 60 * 60 * 24 * 30);
+          if (monthsDiff > 0) {
+            const monthlyRate = ((last.weight - first.weight) / first.weight) * 100 / monthsDiff;
+            totalProgressRates.push(monthlyRate);
+          }
+        }
+      });
+      
+      if (totalProgressRates.length === 0) return 0;
+      const avgRate = totalProgressRates.reduce((a, b) => a + b, 0) / totalProgressRates.length;
+      return Math.round(avgRate);
+    });
   },
 
   getRecentAchievements() {
     const current = this.getAchievements();
     const earned = current.filter(a => a.earned);
     
-    const data = AppData.load();
-    let stored = data.recentAchievements || [];
-    
+    const stored = (AppData.load().recentAchievements || []);
     const storedIds = stored.map(a => a.id || a.title);
     const newAchievements = earned.filter(a => !storedIds.includes(a.id || a.title));
     
     if (newAchievements.length > 0) {
-      stored = [...newAchievements, ...stored].slice(0, 3);
-      data.recentAchievements = stored;
-      AppData.save(data);
+      return { list: [...newAchievements, ...stored].slice(0, 3), hasNew: true };
     }
-    
-    return stored;
+    return { list: stored, hasNew: false };
   }
 };
 
@@ -2459,7 +2455,11 @@ const AppUI = {
     document.getElementById('exercise-evolution').innerHTML = evolutionHTML;
 
     // Recent Achievements (show only if there are any)
-    const recentAchievements = AppStats.getRecentAchievements();
+    const recentResult = AppStats.getRecentAchievements();
+    if (recentResult.hasNew) {
+      AppData.saveRecentAchievements(recentResult.list);
+    }
+    const recentAchievements = recentResult.list;
     const recentSection = document.getElementById('recent-achievements-section');
     const recentContainer = document.getElementById('recent-achievements');
     
@@ -3098,7 +3098,7 @@ const AppUI = {
         }).filter(Boolean);
 
         data.sessions.push({
-          id: Date.now().toString() + '_' + week + '_' + dayIdx,
+          id: _uid(),
           date: sessionDate.toISOString(),
           programId: program.id,
           programName: program.nom,
@@ -3135,6 +3135,8 @@ const AppUI = {
           // Ensure required arrays exist
           if (!Array.isArray(imported.programs)) imported.programs = [];
           if (!Array.isArray(imported.sessions)) imported.sessions = [];
+          // Strip derived cache — will be recalculated from actual data
+          delete imported.recentAchievements;
           AppData.save(imported);
           AppData.invalidateCache();
           this.updateDashboard();

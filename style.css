@@ -2799,7 +2799,6 @@ header .header-brand {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   }
 
-  .card:hover,
   .session-item:hover {
     transform: translateY(-3px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
@@ -3648,7 +3647,6 @@ header .header-brand {
 
 /* --- Hover-capable devices (mouse) --- */
 @media (hover: hover) and (pointer: fine) {
-  .card:hover,
   .session-item:hover,
   .evolution-item:hover,
   .program-select-card:hover {
@@ -3662,7 +3660,6 @@ header .header-brand {
     transform: none;
   }
 
-  .card:hover,
   .session-item:hover {
     transform: none;
     border-color: var(--color-border);
