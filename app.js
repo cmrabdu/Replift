@@ -1,6 +1,6 @@
 'use strict';
 
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.9.1';
 
 // Collision-resistant unique ID generator
 function _uid() {
@@ -1059,6 +1059,88 @@ const AppUI = {
   obStep: 0,
   obData: { goal: null, level: null, name: '', emoji: '🏋️', freq: 3, selectedPrograms: [] },
 
+  // ── Event Delegation ─────────────────────────────────────────
+  _initEventDelegation() {
+    document.body.addEventListener('click', e => {
+      const el = e.target.closest('[data-action]');
+      if (!el) return;
+      const action = el.dataset.action;
+      const handler = AppUI._actions[action];
+      if (handler) handler.call(AppUI, el, e);
+    });
+  },
+
+  _actions: {
+    // ── Onboarding ──
+    'ob-next':            ()          => AppUI.onboardingNext(),
+    'ob-prev':            ()          => AppUI.onboardingPrev(),
+    'ob-select':          el          => AppUI.onboardingSelect(el, el.dataset.field),
+    'ob-freq':            el          => AppUI.onboardingFreq(+el.dataset.dir),
+    'finish-onboarding':  ()          => AppUI.finishOnboarding(),
+    'pick-ob-emoji':      el          => AppUI.pickObEmoji(el, el.dataset.emoji),
+    'select-ob-pack':     el          => AppUI.selectObPack(el, +el.dataset.idx),
+
+    // ── Navigation ──
+    'switch-page':        (el, e)     => AppUI.switchPage(e, el.dataset.page),
+    'fab-click':          ()          => AppUI.handleFabClick(),
+    'switch-seance-tab':  (el, e)     => AppUI.switchSeanceTab(e, el.dataset.tab),
+
+    // ── Browse Packs ──
+    'set-browse-filter':  el          => AppUI.setBrowseFilter(el.dataset.filterType, el.dataset.filterValue),
+    'add-pack':           el          => AppUI.addPackToPrograms(el.dataset.cat, el.dataset.lvl, +el.dataset.packIdx),
+    'open-browse-packs':  ()          => AppUI.openBrowsePacks(),
+
+    // ── Programmes ──
+    'open-create-program':          () => AppUI.openCreateProgram(),
+    'open-edit-program':            el => AppUI.openEditProgram(el.dataset.id),
+    'add-exercise-to-form':         () => AppUI.addExerciseToForm(),
+    'remove-exercise-block':        el => el.closest('.exercise-block').remove(),
+    'add-series':                   el => AppUI.addSeriesToExercise(+el.dataset.exoIdx),
+    'delete-series':                el => AppUI.deleteSeriesRow(el),
+    'save-program':                 () => AppUI.saveProgram(),
+    'duplicate-program':            () => AppUI.duplicateCurrentProgram(),
+    'delete-program':               () => AppUI.deleteCurrentProgram(),
+    'delete-program-sessions':      () => AppUI.deleteCurrentProgramWithSessions(),
+
+    // ── Session ──
+    'start-session':       el => AppUI.startSession(el.dataset.id),
+    'start-rest-timer':    el => AppUI.startRestTimer(+el.dataset.rest, el),
+    'skip-rest-timer':     ()  => AppUI.skipRestTimer(),
+    'add-active-series':   el => AppUI.addActiveSeriesRow(el),
+    'save-session':        ()  => AppUI.saveSession(),
+    'minimize-session':    ()  => AppUI.minimizeSession(),
+    'confirm-close-session': () => AppUI.confirmCloseSession(),
+
+    // ── Recovery ──
+    'resume-recovery':     () => AppUI.resumeFromRecovery(),
+    'discard-recovery':    () => AppUI.discardRecovery(),
+
+    // ── Dashboard / Calendar ──
+    'navigate-calendar':   el => AppUI.navigateCalendar(+el.dataset.dir),
+
+    // ── Historique ──
+    'navigate-historique': el => AppUI.navigateHistorique(+el.dataset.dir),
+    'view-session':        el => AppUI.viewSession(el.dataset.id),
+    'delete-current-session': () => AppUI.deleteCurrentSession(),
+
+    // ── Stats / Évolution ──
+    'open-exercise-chart': el => AppUI.openExerciseChart(el.dataset.exercise),
+    'switch-chart-period': (el, e) => AppUI.switchChartPeriod(e, el.dataset.period),
+
+    // ── Profil ──
+    'open-edit-profile':   ()  => AppUI.openEditProfile(),
+    'open-all-achievements': () => AppUI.openAllAchievements(),
+    'pick-profile-emoji':  el => AppUI.pickProfileEmoji(el, el.dataset.emoji),
+    'save-profile':        ()  => AppUI.saveProfile(),
+    'export-data':         ()  => AppUI.exportData(),
+    'import-data':         ()  => AppUI.importData(),
+    'generate-test-data':  ()  => AppUI.generateTestData(),
+    'reset-data':          ()  => AppUI.resetData(),
+
+    // ── Overlays ──
+    'close-overlay':       el => AppUI.closeOverlay(el.dataset.overlay),
+  },
+
   checkOnboarding() {
     const data = AppData.load();
     if (!data.user || !data.user.onboardingDone) {
@@ -1078,7 +1160,7 @@ const AppUI = {
     const emojis = PROFILE_EMOJIS;
     const grid = document.getElementById('ob-emoji-grid');
     grid.innerHTML = emojis.map(e =>
-      '<button class="ob-emoji-btn' + (e === this.obData.emoji ? ' selected' : '') + '" type="button" onclick="AppUI.pickObEmoji(this, \'' + e + '\')">' + e + '</button>'
+      '<button class="ob-emoji-btn' + (e === this.obData.emoji ? ' selected' : '') + '" type="button" data-action="pick-ob-emoji" data-emoji="' + e + '">' + e + '</button>'
     ).join('');
   },
 
@@ -1158,7 +1240,7 @@ const AppUI = {
 
     const container = document.getElementById('ob-programs');
     container.innerHTML = allPacks.map((pack, i) =>
-      '<div class="ob-pack-card' + (this.obData.selectedPrograms.indexOf(i) !== -1 ? ' selected' : '') + '" data-idx="' + i + '" onclick="AppUI.selectObPack(this, ' + i + ')">' +
+      '<div class="ob-pack-card' + (this.obData.selectedPrograms.indexOf(i) !== -1 ? ' selected' : '') + '" data-idx="' + i + '" data-action="select-ob-pack">' +
         '<div class="ob-pack-head">' +
           '<div class="ob-prog-icon ob-feature-icon--primary">' + pack.icon + '</div>' +
           '<div class="ob-pack-info">' +
@@ -1257,11 +1339,11 @@ const AppUI = {
     const filtersEl = document.getElementById('browse-packs-filters');
     let filtersHtml = '<div class="browse-filter-row">';
     Object.keys(this._browseCategoryLabels).forEach(cat => {
-      filtersHtml += '<button class="browse-chip' + (filter.category === cat ? ' active' : '') + '" onclick="AppUI.setBrowseFilter(\'category\', \'' + cat + '\')">' + this._browseCategoryLabels[cat] + '</button>';
+      filtersHtml += '<button class="browse-chip' + (filter.category === cat ? ' active' : '') + '" data-action="set-browse-filter" data-filter-type="category" data-filter-value="' + cat + '">' + this._browseCategoryLabels[cat] + '</button>';
     });
     filtersHtml += '</div><div class="browse-filter-row">';
     Object.keys(this._browseLevelLabels).forEach(lvl => {
-      filtersHtml += '<button class="browse-chip' + (filter.level === lvl ? ' active' : '') + '" onclick="AppUI.setBrowseFilter(\'level\', \'' + lvl + '\')">' + this._browseLevelLabels[lvl] + '</button>';
+      filtersHtml += '<button class="browse-chip' + (filter.level === lvl ? ' active' : '') + '" data-action="set-browse-filter" data-filter-type="level" data-filter-value="' + lvl + '">' + this._browseLevelLabels[lvl] + '</button>';
     });
     filtersHtml += '</div>';
     filtersEl.innerHTML = filtersHtml;
@@ -1299,7 +1381,7 @@ const AppUI = {
                   '</div>'
                 ).join('') +
               '</div>' +
-              '<button class="btn btn-white browse-pack-add" onclick="AppUI.addPackToPrograms(\'' + this.escAttr(cat) + '\', \'' + this.escAttr(lvl) + '\', ' + packIdx + ')">Ajouter ce programme</button>' +
+              '<button class="btn btn-white browse-pack-add" data-action="add-pack" data-cat="' + this.escAttr(cat) + '" data-lvl="' + this.escAttr(lvl) + '" data-pack-idx="' + packIdx + '">Ajouter ce programme</button>' +
             '</div>';
         });
       });
@@ -1503,7 +1585,7 @@ const AppUI = {
       bar.innerHTML =
         '<div class="rest-timer-top">' +
           '<div><div class="rest-timer-display"></div><div class="rest-timer-label">Repos</div></div>' +
-          '<button class="rest-timer-skip" onclick="AppUI.skipRestTimer()">Passer</button>' +
+          '<button class="rest-timer-skip" data-action="skip-rest-timer">Passer</button>' +
         '</div>' +
         '<div class="rest-timer-progress"><div class="rest-timer-fill"></div></div>';
       insertAfter.insertAdjacentElement('afterend', bar);
@@ -1760,10 +1842,10 @@ const AppUI = {
     
     // Header: nav + month name
     html += '<div class="cal-header">';
-    html += `<button class="cal-nav" onclick="AppUI.navigateCalendar(-1)" aria-label="Mois précédent">‹</button>`;
+    html += `<button class="cal-nav" data-action="navigate-calendar" data-dir="-1" aria-label="Mois précédent">‹</button>`;
     html += `<span class="cal-title">${monthNames[month]} ${year}</span>`;
     const isCurrentMonth = this.calendarOffset === 0;
-    html += `<button class="cal-nav${isCurrentMonth ? ' disabled' : ''}" onclick="AppUI.navigateCalendar(1)" ${isCurrentMonth ? 'disabled' : ''} aria-label="Mois suivant">›</button>`;
+    html += `<button class="cal-nav${isCurrentMonth ? ' disabled' : ''}" data-action="navigate-calendar" data-dir="1" ${isCurrentMonth ? 'disabled' : ''} aria-label="Mois suivant">›</button>`;
     html += '</div>';
     
     // Day-of-week headers
@@ -1867,7 +1949,7 @@ const AppUI = {
         : '<div class="program-card-exercises program-card-exercises--empty">Aucun exercice</div>';
       
       return (
-        '<div class="program-card" onclick="AppUI.openEditProgram(\'' + this.escAttr(p.id) + '\')">' +
+        '<div class="program-card" data-action="open-edit-program" data-id="' + this.escAttr(p.id) + '">' +
           packBadge +
           '<div class="program-card-header">' +
             '<h3 class="program-card-title">' + this.esc(p.nom) + '</h3>' +
@@ -1991,7 +2073,7 @@ const AppUI = {
     div.innerHTML =
       '<div class="exercise-block-header">' +
         '<input type="text" class="form-input" id="exo-name-' + idx + '" placeholder="Nom de l\'exercice" value="' + (data ? this.escAttr(data.nom || '') : '') + '">' +
-        '<button class="exercise-remove" onclick="document.getElementById(\'exercise-block-' + idx + '\').remove()">' + _ic('x') + '</button>' +
+        '<button class="exercise-remove" data-action="remove-exercise-block">' + _ic('x') + '</button>' +
       '</div>' +
       '<div class="exercise-rest-config">' +
         '<label class="rest-config-label">' + _ic('clock', 'icon--sm') + ' Repos</label>' +
@@ -2004,7 +2086,7 @@ const AppUI = {
         '</select>' +
       '</div>' +
       '<div id="series-container-' + idx + '">' + seriesHTML + '</div>' +
-      '<button class="add-link" onclick="AppUI.addSeriesToExercise(' + idx + ')">+ Ajouter une série</button>';
+      '<button class="add-link" data-action="add-series" data-exo-idx="' + idx + '">+ Ajouter une série</button>';
     container.appendChild(div);
   },
 
@@ -2014,7 +2096,7 @@ const AppUI = {
         '<span class="series-num">' + serieNum + '</span>' +
         '<input type="number" placeholder="kg" value="' + (poids || '') + '" data-type="poids">' +
         '<input type="number" placeholder="reps" value="' + (reps || '') + '" data-type="reps">' +
-        '<button class="series-delete" onclick="AppUI.deleteSeriesRow(this)">' + _ic('x') + '</button>' +
+        '<button class="series-delete" data-action="delete-series">' + _ic('x') + '</button>' +
       '</div>'
     );
   },
@@ -2092,7 +2174,7 @@ const AppUI = {
       container.innerHTML = programs.map(p => {
         const exCount = (p.exercices || []).length;
         return (
-          '<div class="program-select-card" onclick="AppUI.startSession(\'' + this.escAttr(p.id) + '\')">' +
+          '<div class="program-select-card" data-action="start-session" data-id="' + this.escAttr(p.id) + '">' +
             '<div class="name">' + this.esc(p.nom) + '</div>' +
             '<div class="info">' + exCount + ' exercice(s)</div>' +
           '</div>'
@@ -2151,13 +2233,13 @@ const AppUI = {
             '<span class="series-num">' + (i + 1) + '</span>' +
             '<input type="number" placeholder="' + placeholderPoids + '" data-type="poids"' + (ghostPoids ? ' class="ghost"' : '') + '>' +
             '<input type="number" placeholder="' + placeholderReps + '" data-type="reps"' + (ghostReps ? ' class="ghost"' : '') + '>' +
-            '<button class="rest-trigger" onclick="AppUI.startRestTimer(' + restTime + ', this)" title="Repos ' + restTime + 's">' + _ic('clock') + '</button>' +
-            '<button class="series-delete" onclick="AppUI.deleteSeriesRow(this)">' + _ic('x') + '</button>' +
+            '<button class="rest-trigger" data-action="start-rest-timer" data-rest="' + restTime + '" title="Repos ' + restTime + 's">' + _ic('clock') + '</button>' +
+            '<button class="series-delete" data-action="delete-series">' + _ic('x') + '</button>' +
           '</div>' +
           '<input type="text" class="note-input" placeholder="Note (optionnel)" maxlength="100">';
       }
 
-      html += '<button class="add-link" onclick="AppUI.addActiveSeriesRow(this)">+ Série</button></div>';
+      html += '<button class="add-link" data-action="add-active-series">+ Série</button></div>';
       container.insertAdjacentHTML('beforeend', html);
     });
 
@@ -2177,8 +2259,8 @@ const AppUI = {
         '<span class="series-num">' + num + '</span>' +
         '<input type="number" placeholder="kg" data-type="poids">' +
         '<input type="number" placeholder="reps" data-type="reps">' +
-        '<button class="rest-trigger" onclick="AppUI.startRestTimer(' + restTime + ', this)" title="Repos ' + restTime + 's">' + _ic('clock') + '</button>' +
-        '<button class="series-delete" onclick="AppUI.deleteSeriesRow(this)">' + _ic('x') + '</button>' +
+        '<button class="rest-trigger" data-action="start-rest-timer" data-rest="' + restTime + '" title="Repos ' + restTime + 's">' + _ic('clock') + '</button>' +
+        '<button class="series-delete" data-action="delete-series">' + _ic('x') + '</button>' +
       '</div>' +
       '<input type="text" class="note-input" placeholder="Note (optionnel)" maxlength="100">';
     btn.insertAdjacentHTML('beforebegin', html);
@@ -2303,9 +2385,9 @@ const AppUI = {
     const monthLabel = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 
     let html = '<div class="historique-nav">';
-    html += '<button class="cal-nav' + (idx >= months.length - 1 ? ' disabled' : '') + '" onclick="AppUI.navigateHistorique(1)"' + (idx >= months.length - 1 ? ' disabled' : '') + '>‹</button>';
+    html += '<button class="cal-nav' + (idx >= months.length - 1 ? ' disabled' : '') + '" data-action="navigate-historique" data-dir="1"' + (idx >= months.length - 1 ? ' disabled' : '') + '>‹</button>';
     html += '<span class="historique-month-header">' + monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1) + '</span>';
-    html += '<button class="cal-nav' + (idx <= 0 ? ' disabled' : '') + '" onclick="AppUI.navigateHistorique(-1)"' + (idx <= 0 ? ' disabled' : '') + '>›</button>';
+    html += '<button class="cal-nav' + (idx <= 0 ? ' disabled' : '') + '" data-action="navigate-historique" data-dir="-1"' + (idx <= 0 ? ' disabled' : '') + '>›</button>';
     html += '</div>';
 
     currentSessions.forEach(s => {
@@ -2315,7 +2397,7 @@ const AppUI = {
       let totalSeries = 0;
       (s.exercices || []).forEach(ex => { totalSeries += (ex.series || []).length; });
       html +=
-        '<div class="session-item" onclick="AppUI.viewSession(\'' + this.escAttr(s.id) + '\')">' +
+        '<div class="session-item" data-action="view-session" data-id="' + this.escAttr(s.id) + '">' +
           '<div class="session-item-header">' +
             '<div class="session-item-date">' + dateStr + '</div>' +
             '<div class="session-item-program">' + this.esc(s.programName || '') + '</div>' +
@@ -2427,7 +2509,7 @@ const AppUI = {
         const trendClass = 'evolution-trend-' + ex.trend;
 
         evolutionHTML +=
-          '<div class="evolution-item" onclick="AppUI.openExerciseChart(\'' + this.escAttr(ex.name) + '\')">' +
+          '<div class="evolution-item" data-action="open-exercise-chart" data-exercise="' + this.escAttr(ex.name) + '">' +
             '<div class="evolution-item-header">' +
               '<span class="evolution-item-name">' + this.esc(ex.name) + '</span>' +
               '<div class="evolution-item-trend ' + trendClass + '">' +
@@ -2886,7 +2968,7 @@ const AppUI = {
     const emojis = PROFILE_EMOJIS;
     const grid = document.getElementById('edit-profile-emoji-grid');
     grid.innerHTML = emojis.map(e =>
-      '<button class="emoji-pick-btn' + (e === currentEmoji ? ' selected' : '') + '" type="button" onclick="AppUI.pickProfileEmoji(this, \'' + e + '\')">' + e + '</button>'
+      '<button class="emoji-pick-btn' + (e === currentEmoji ? ' selected' : '') + '" type="button" data-action="pick-profile-emoji" data-emoji="' + e + '">' + e + '</button>'
     ).join('');
 
     this.openOverlay('overlay-edit-profile');
@@ -2978,13 +3060,13 @@ const AppUI = {
             '<span class="series-num">' + (i + 1) + '</span>' +
             '<input type="number" placeholder="kg" value="' + (serie.poids || '') + '" data-type="poids">' +
             '<input type="number" placeholder="reps" value="' + (serie.reps || '') + '" data-type="reps">' +
-            '<button class="rest-trigger" onclick="AppUI.startRestTimer(' + restTime + ', this)" title="Repos ' + restTime + 's">' + _ic('clock') + '</button>' +
-            '<button class="series-delete" onclick="AppUI.deleteSeriesRow(this)">' + _ic('x') + '</button>' +
+            '<button class="rest-trigger" data-action="start-rest-timer" data-rest="' + restTime + '" title="Repos ' + restTime + 's">' + _ic('clock') + '</button>' +
+            '<button class="series-delete" data-action="delete-series">' + _ic('x') + '</button>' +
           '</div>' +
           '<input type="text" class="note-input" placeholder="Note (optionnel)" value="' + AppUI.escAttr(serie.note || '') + '" maxlength="100">';
       });
 
-      html += '<button class="add-link" onclick="AppUI.addActiveSeriesRow(this)">+ Série</button></div>';
+      html += '<button class="add-link" data-action="add-active-series">+ Série</button></div>';
       container.insertAdjacentHTML('beforeend', html);
     });
 
@@ -3174,6 +3256,9 @@ const AppUI = {
 // APP INIT
 // ================================================================
 document.addEventListener('DOMContentLoaded', () => {
+  // Event delegation — single listener for all data-action clicks
+  AppUI._initEventDelegation();
+
   // Version display
   const versionEl = document.getElementById('app-version');
   if (versionEl) versionEl.textContent = 'RepLift v' + APP_VERSION;

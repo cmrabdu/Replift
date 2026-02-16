@@ -4,7 +4,7 @@
 
 PWA mobile-first en Vanilla JS pour suivre ses performances en salle, séance après séance. Interface dark élégante, zéro dépendance, offline-ready.
 
-**v1.9.0** — 16 Février 2026 · ✅ Production Ready
+**v1.9.1** — 16 Février 2026 · ✅ Production Ready
 
 ---
 
@@ -251,6 +251,19 @@ Semantic Versioning : `MAJOR.MINOR.PATCH`
 | **MAJOR** | Breaking change (format données, refonte archi, suppression feature) |
 | **MINOR** | Nouvelle fonctionnalité sans casser l'existant |
 | **PATCH** | Bug fix, optimisation, nettoyage interne |
+
+---
+
+### v1.9.1 — 16 Février 2026
+
+*ARCH-04 — Event Delegation*
+
+**Refactor architecture**
+- ⚡ **90 `onclick` inline → 0** : remplacés par `data-action` + dispatcher central
+- ⚡ **`_initEventDelegation()`** : un seul listener `click` sur `document.body`
+- ⚡ **`_actions` map** : 37 actions uniques, organisées par section
+- ⚡ Concerne `app.js` (26 handlers dynamiques) et `index.html` (64 handlers statiques)
+- ✅ Zéro changement fonctionnel — refactor interne pur
 
 ---
 

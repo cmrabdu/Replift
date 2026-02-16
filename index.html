@@ -164,15 +164,15 @@
         
         <!-- Tabs -->
         <div class="tabs">
-          <button class="tab-btn active" onclick="AppUI.switchSeanceTab(event, 'programmes')">Programmes</button>
-          <button class="tab-btn" onclick="AppUI.switchSeanceTab(event, 'historique')">Historique</button>
+          <button class="tab-btn active" data-action="switch-seance-tab" data-tab="programmes">Programmes</button>
+          <button class="tab-btn" data-action="switch-seance-tab" data-tab="historique">Historique</button>
         </div>
         
         <!-- Tab: Programmes -->
         <div id="tab-programmes" class="tab-content active">
           <div class="tab-header">
-            <button class="page-title-btn" onclick="AppUI.openCreateProgram()">+ Créer</button>
-            <button class="page-title-btn page-title-btn--secondary" onclick="AppUI.openBrowsePacks()">📦 Programmes préfaits</button>
+            <button class="page-title-btn" data-action="open-create-program">+ Créer</button>
+            <button class="page-title-btn page-title-btn--secondary" data-action="open-browse-packs">📦 Programmes préfaits</button>
           </div>
           <div id="programs-list"></div>
         </div>
@@ -188,7 +188,7 @@
         <div class="page-title"><span>Profil</span></div>
 
         <!-- En-tête Profil + Résumé Rapide -->
-        <div class="profile-header" onclick="AppUI.openEditProfile()">
+        <div class="profile-header" data-action="open-edit-profile">
           <div class="profile-avatar" id="profile-avatar">🏋️</div>
           <div class="profile-info">
             <div class="profile-name" id="profile-name">Mon Profil</div>
@@ -224,7 +224,7 @@
             <span class="profile-badge-count" id="achievements-count">0/18</span>
           </div>
           <div id="profile-achievements-preview" class="profile-achievements-preview"></div>
-          <button class="btn profile-see-all-btn" onclick="AppUI.openAllAchievements()">Voir tous les succès</button>
+          <button class="btn profile-see-all-btn" data-action="open-all-achievements">Voir tous les succès</button>
         </div>
 
         <!-- Évolution 12 mois -->
@@ -236,16 +236,16 @@
         <!-- Paramètres & Données -->
         <div class="settings-group">
           <h3>Données</h3>
-          <button class="btn" onclick="AppUI.exportData()">Exporter données</button>
-          <button class="btn" onclick="AppUI.importData()">Importer données</button>
+          <button class="btn" data-action="export-data">Exporter données</button>
+          <button class="btn" data-action="import-data">Importer données</button>
         </div>
         <div class="settings-group">
           <h3>Développement</h3>
-          <button class="btn" onclick="AppUI.generateTestData()">Générer données de test</button>
+          <button class="btn" data-action="generate-test-data">Générer données de test</button>
         </div>
         <div class="settings-group">
           <h3>Zone Danger</h3>
-          <button class="btn btn-danger" onclick="AppUI.resetData()">Réinitialiser toutes les données</button>
+          <button class="btn btn-danger" data-action="reset-data">Réinitialiser toutes les données</button>
         </div>
         <div class="app-footer">
           <p>Made with ❤️ by Abdullah Cammur</p>
@@ -255,25 +255,25 @@
 
       <!-- ========== Bottom Navigation ========== -->
       <div class="navbar">
-        <div class="nav-item active" onclick="AppUI.switchPage(event, 'dashboard')">
+        <div class="nav-item active" data-action="switch-page" data-page="dashboard">
           <div class="nav-item-icon"><svg class="icon"><use href="#i-home"/></svg></div>
           <div class="nav-item-label">Dashboard</div>
         </div>
-        <div class="nav-item" onclick="AppUI.switchPage(event, 'stats')">
+        <div class="nav-item" data-action="switch-page" data-page="stats">
           <div class="nav-item-icon"><svg class="icon"><use href="#i-bar-chart"/></svg></div>
           <div class="nav-item-label">Stats</div>
         </div>
         <div class="nav-fab">
-          <button id="fab-button" onclick="AppUI.handleFabClick()">
+          <button id="fab-button" data-action="fab-click">
             <span class="fab-icon"><svg class="icon"><use href="#i-plus"/></svg></span>
             <span id="fab-badge" class="fab-badge" style="display: none;"></span>
           </button>
         </div>
-        <div class="nav-item" onclick="AppUI.switchPage(event, 'seance')">
+        <div class="nav-item" data-action="switch-page" data-page="seance">
           <div class="nav-item-icon"><svg class="icon"><use href="#i-clipboard"/></svg></div>
           <div class="nav-item-label">Séances</div>
         </div>
-        <div class="nav-item" onclick="AppUI.switchPage(event, 'profil')">
+        <div class="nav-item" data-action="switch-page" data-page="profil">
           <div class="nav-item-icon"><svg class="icon"><use href="#i-user"/></svg></div>
           <div class="nav-item-label">Profil</div>
         </div>
@@ -287,7 +287,7 @@
     <div id="overlay-create-program" class="overlay">
       <div class="overlay-header">
         <h2 id="create-program-title">Nouveau Programme</h2>
-        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-create-program')"><svg class="icon"><use href="#i-x"/></svg></button>
+        <button class="overlay-close" data-action="close-overlay" data-overlay="overlay-create-program"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <div id="program-pack-info" class="program-pack-info" style="display:none;"></div>
@@ -296,12 +296,12 @@
           <input type="text" class="form-input" id="program-name" placeholder="Ex: Push, Pull, Leg Day...">
         </div>
         <div id="program-exercises"></div>
-        <button class="add-link" onclick="AppUI.addExerciseToForm()">+ Ajouter un exercice</button>
+        <button class="add-link" data-action="add-exercise-to-form">+ Ajouter un exercice</button>
         <div class="form-actions">
-          <button class="btn btn-white" onclick="AppUI.saveProgram()">Sauvegarder</button>
-          <button class="btn btn-primary" id="btn-duplicate-program" style="display:none;" onclick="AppUI.duplicateCurrentProgram()">Dupliquer</button>
-          <button class="btn btn-danger" id="btn-delete-program" style="display:none;" onclick="AppUI.deleteCurrentProgram()">Supprimer ce programme</button>
-          <button class="btn btn-danger btn-danger--secondary" id="btn-delete-program-sessions" style="display:none;" onclick="AppUI.deleteCurrentProgramWithSessions()">Supprimer avec ses séances</button>
+          <button class="btn btn-white" data-action="save-program">Sauvegarder</button>
+          <button class="btn btn-primary" id="btn-duplicate-program" style="display:none;" data-action="duplicate-program">Dupliquer</button>
+          <button class="btn btn-danger" id="btn-delete-program" style="display:none;" data-action="delete-program">Supprimer ce programme</button>
+          <button class="btn btn-danger btn-danger--secondary" id="btn-delete-program-sessions" style="display:none;" data-action="delete-program-sessions">Supprimer avec ses séances</button>
         </div>
       </div>
     </div>
@@ -310,7 +310,7 @@
     <div id="overlay-recovery" class="overlay overlay--sheet">
       <div class="overlay-header">
         <h2>Seance interrompue</h2>
-        <button class="overlay-close" onclick="AppUI.discardRecovery()"><svg class="icon"><use href="#i-x"/></svg></button>
+        <button class="overlay-close" data-action="discard-recovery"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <div class="recovery-card">
@@ -325,8 +325,8 @@
         </div>
         <p class="recovery-description">Une seance en cours a ete detectee. Souhaites-tu la reprendre la ou tu t'es arrete ?</p>
         <div class="recovery-actions">
-          <button class="btn btn-white" onclick="AppUI.resumeFromRecovery()">Reprendre la seance</button>
-          <button class="btn btn-ghost" onclick="AppUI.discardRecovery()">Abandonner</button>
+          <button class="btn btn-white" data-action="resume-recovery">Reprendre la seance</button>
+          <button class="btn btn-ghost" data-action="discard-recovery">Abandonner</button>
         </div>
       </div>
     </div>
@@ -335,7 +335,7 @@
     <div id="overlay-select-program" class="overlay overlay--sheet">
       <div class="overlay-header">
         <h2>Demarrer une seance</h2>
-        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-select-program')"><svg class="icon"><use href="#i-x"/></svg></button>
+        <button class="overlay-close" data-action="close-overlay" data-overlay="overlay-select-program"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <p class="text-muted mb-20">Choisis un programme pour commencer ta seance</p>
@@ -347,8 +347,8 @@
     <div id="overlay-active-session" class="overlay">
       <div class="overlay-header">
         <h2 id="active-session-title">Seance en cours</h2>
-        <button class="overlay-minimize" onclick="AppUI.minimizeSession()" title="Minimiser"><svg class="icon"><use href="#i-chevron-down"/></svg></button>
-        <button class="overlay-close" onclick="AppUI.confirmCloseSession()"><svg class="icon"><use href="#i-x"/></svg></button>
+        <button class="overlay-minimize" data-action="minimize-session" title="Minimiser"><svg class="icon"><use href="#i-chevron-down"/></svg></button>
+        <button class="overlay-close" data-action="confirm-close-session"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <div class="session-timer" id="session-timer">
@@ -357,7 +357,7 @@
         </div>
         <div id="active-session-exercises"></div>
         <div class="form-actions">
-          <button class="btn btn-white" onclick="AppUI.saveSession()">Terminer la seance</button>
+          <button class="btn btn-white" data-action="save-session">Terminer la seance</button>
         </div>
       </div>
     </div>
@@ -366,12 +366,12 @@
     <div id="overlay-session-detail" class="overlay">
       <div class="overlay-header">
         <h2 id="session-detail-title">Detail Seance</h2>
-        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-session-detail')"><svg class="icon"><use href="#i-x"/></svg></button>
+        <button class="overlay-close" data-action="close-overlay" data-overlay="overlay-session-detail"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <div id="session-detail-content"></div>
         <div class="form-actions">
-          <button class="btn btn-danger" onclick="AppUI.deleteCurrentSession()">Supprimer cette seance</button>
+          <button class="btn btn-danger" data-action="delete-current-session">Supprimer cette seance</button>
         </div>
       </div>
     </div>
@@ -380,7 +380,7 @@
     <div id="overlay-all-achievements" class="overlay">
       <div class="overlay-header">
         <h2>Tous les Succès</h2>
-        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-all-achievements')"><svg class="icon"><use href="#i-x"/></svg></button>
+        <button class="overlay-close" data-action="close-overlay" data-overlay="overlay-all-achievements"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <div class="achievements-progress-bar">
@@ -395,7 +395,7 @@
     <div id="overlay-edit-profile" class="overlay">
       <div class="overlay-header">
         <h2>Modifier le Profil</h2>
-        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-edit-profile')"><svg class="icon"><use href="#i-x"/></svg></button>
+        <button class="overlay-close" data-action="close-overlay" data-overlay="overlay-edit-profile"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <div class="edit-profile-emoji-section">
@@ -410,7 +410,7 @@
           <label class="form-label">Bio</label>
           <input type="text" id="edit-profile-bio" class="form-input" placeholder="Décris ton objectif" maxlength="60">
         </div>
-        <button class="btn btn-white" onclick="AppUI.saveProfile()">Enregistrer</button>
+        <button class="btn btn-white" data-action="save-profile">Enregistrer</button>
       </div>
     </div>
 
@@ -418,17 +418,17 @@
     <div id="overlay-exercise-chart" class="overlay">
       <div class="overlay-header">
         <h2 id="chart-exercise-title">Évolution</h2>
-        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-exercise-chart')"><svg class="icon"><use href="#i-x"/></svg></button>
+        <button class="overlay-close" data-action="close-overlay" data-overlay="overlay-exercise-chart"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <!-- Sélecteur de période -->
         <div class="chart-controls">
           <div class="period-selector">
-            <button class="period-btn" data-period="7d" onclick="AppUI.switchChartPeriod(event, '7d')">7j</button>
-            <button class="period-btn active" data-period="30d" onclick="AppUI.switchChartPeriod(event, '30d')">30j</button>
-            <button class="period-btn" data-period="3m" onclick="AppUI.switchChartPeriod(event, '3m')">3M</button>
-            <button class="period-btn" data-period="6m" onclick="AppUI.switchChartPeriod(event, '6m')">6M</button>
-            <button class="period-btn" data-period="1y" onclick="AppUI.switchChartPeriod(event, '1y')">1A</button>
+            <button class="period-btn" data-period="7d" data-action="switch-chart-period">7j</button>
+            <button class="period-btn active" data-period="30d" data-action="switch-chart-period">30j</button>
+            <button class="period-btn" data-period="3m" data-action="switch-chart-period">3M</button>
+            <button class="period-btn" data-period="6m" data-action="switch-chart-period">6M</button>
+            <button class="period-btn" data-period="1y" data-action="switch-chart-period">1A</button>
           </div>
         </div>
         
@@ -499,57 +499,57 @@
             </div>
           </div>
         </div>
-        <button class="ob-btn ob-btn--primary" onclick="AppUI.onboardingNext()">Commencer <svg class="icon"><use href="#i-arrow-right"/></svg></button>
+        <button class="ob-btn ob-btn--primary" data-action="ob-next">Commencer <svg class="icon"><use href="#i-arrow-right"/></svg></button>
       </div>
 
       <!-- Screen 2: Objectif -->
       <div class="ob-screen" data-screen="1">
         <div class="ob-screen-head">
-          <button class="ob-back" onclick="AppUI.onboardingPrev()"><svg class="icon"><use href="#i-chevron-left"/></svg></button>
+          <button class="ob-back" data-action="ob-prev"><svg class="icon"><use href="#i-chevron-left"/></svg></button>
           <h2 class="ob-screen-title">Ton Objectif</h2>
-          <button class="ob-skip" onclick="AppUI.onboardingNext()">Passer</button>
+          <button class="ob-skip" data-action="ob-next">Passer</button>
         </div>
         <p class="ob-prompt">Quel est ton objectif principal ?</p>
         <div class="ob-choices" id="ob-goal-choices">
-          <button class="ob-choice" data-value="strength" onclick="AppUI.onboardingSelect(this, 'goal')">
+          <button class="ob-choice" data-value="strength" data-action="ob-select" data-field="goal">
             <div class="ob-choice-icon ob-choice-icon--primary"><svg class="icon"><use href="#i-shield"/></svg></div>
             <div class="ob-choice-label">Force</div>
             <div class="ob-choice-desc">Soulever plus lourd</div>
           </button>
-          <button class="ob-choice" data-value="hypertrophy" onclick="AppUI.onboardingSelect(this, 'goal')">
+          <button class="ob-choice" data-value="hypertrophy" data-action="ob-select" data-field="goal">
             <div class="ob-choice-icon ob-choice-icon--accent"><svg class="icon"><use href="#i-dumbbell"/></svg></div>
             <div class="ob-choice-label">Hypertrophie</div>
             <div class="ob-choice-desc">Gagner du muscle</div>
           </button>
-          <button class="ob-choice" data-value="endurance" onclick="AppUI.onboardingSelect(this, 'goal')">
+          <button class="ob-choice" data-value="endurance" data-action="ob-select" data-field="goal">
             <div class="ob-choice-icon ob-choice-icon--warm"><svg class="icon"><use href="#i-zap"/></svg></div>
             <div class="ob-choice-label">Endurance</div>
             <div class="ob-choice-desc">Plus de reps, plus longtemps</div>
           </button>
-          <button class="ob-choice" data-value="general" onclick="AppUI.onboardingSelect(this, 'goal')">
+          <button class="ob-choice" data-value="general" data-action="ob-select" data-field="goal">
             <div class="ob-choice-icon ob-choice-icon--blue"><svg class="icon"><use href="#i-target"/></svg></div>
             <div class="ob-choice-label">Fitness General</div>
             <div class="ob-choice-desc">Equilibre et sante</div>
           </button>
-          <button class="ob-choice" data-value="weightloss" onclick="AppUI.onboardingSelect(this, 'goal')">
+          <button class="ob-choice" data-value="weightloss" data-action="ob-select" data-field="goal">
             <div class="ob-choice-icon ob-choice-icon--red"><svg class="icon"><use href="#i-flame"/></svg></div>
             <div class="ob-choice-label">Perte de poids</div>
             <div class="ob-choice-desc">Bruler et tonifier</div>
           </button>
         </div>
-        <button class="ob-btn ob-btn--primary ob-btn--next" id="ob-goal-next" disabled onclick="AppUI.onboardingNext()">Suivant <svg class="icon"><use href="#i-arrow-right"/></svg></button>
+        <button class="ob-btn ob-btn--primary ob-btn--next" id="ob-goal-next" disabled data-action="ob-next">Suivant <svg class="icon"><use href="#i-arrow-right"/></svg></button>
       </div>
 
       <!-- Screen 3: Niveau -->
       <div class="ob-screen" data-screen="2">
         <div class="ob-screen-head">
-          <button class="ob-back" onclick="AppUI.onboardingPrev()"><svg class="icon"><use href="#i-chevron-left"/></svg></button>
+          <button class="ob-back" data-action="ob-prev"><svg class="icon"><use href="#i-chevron-left"/></svg></button>
           <h2 class="ob-screen-title">Ton Niveau</h2>
-          <button class="ob-skip" onclick="AppUI.onboardingNext()">Passer</button>
+          <button class="ob-skip" data-action="ob-next">Passer</button>
         </div>
         <p class="ob-prompt">A quel niveau tu te situes ?</p>
         <div class="ob-choices ob-choices--level" id="ob-level-choices">
-          <button class="ob-choice ob-choice--wide" data-value="beginner" onclick="AppUI.onboardingSelect(this, 'level')">
+          <button class="ob-choice ob-choice--wide" data-value="beginner" data-action="ob-select" data-field="level">
             <div class="ob-choice-icon ob-choice-icon--accent"><svg class="icon"><use href="#i-sparkles"/></svg></div>
             <div class="ob-choice-info">
               <div class="ob-choice-label">Debutant</div>
@@ -557,14 +557,14 @@
             </div>
             <div class="ob-choice-badge">Populaire</div>
           </button>
-          <button class="ob-choice ob-choice--wide" data-value="intermediate" onclick="AppUI.onboardingSelect(this, 'level')">
+          <button class="ob-choice ob-choice--wide" data-value="intermediate" data-action="ob-select" data-field="level">
             <div class="ob-choice-icon ob-choice-icon--warm"><svg class="icon"><use href="#i-zap"/></svg></div>
             <div class="ob-choice-info">
               <div class="ob-choice-label">Intermediaire</div>
               <div class="ob-choice-desc">6 mois a 2 ans</div>
             </div>
           </button>
-          <button class="ob-choice ob-choice--wide" data-value="advanced" onclick="AppUI.onboardingSelect(this, 'level')">
+          <button class="ob-choice ob-choice--wide" data-value="advanced" data-action="ob-select" data-field="level">
             <div class="ob-choice-icon ob-choice-icon--primary"><svg class="icon"><use href="#i-award"/></svg></div>
             <div class="ob-choice-info">
               <div class="ob-choice-label">Avance</div>
@@ -572,15 +572,15 @@
             </div>
           </button>
         </div>
-        <button class="ob-btn ob-btn--primary ob-btn--next" id="ob-level-next" disabled onclick="AppUI.onboardingNext()">Suivant <svg class="icon"><use href="#i-arrow-right"/></svg></button>
+        <button class="ob-btn ob-btn--primary ob-btn--next" id="ob-level-next" disabled data-action="ob-next">Suivant <svg class="icon"><use href="#i-arrow-right"/></svg></button>
       </div>
 
       <!-- Screen 4: Profil -->
       <div class="ob-screen" data-screen="3">
         <div class="ob-screen-head">
-          <button class="ob-back" onclick="AppUI.onboardingPrev()"><svg class="icon"><use href="#i-chevron-left"/></svg></button>
+          <button class="ob-back" data-action="ob-prev"><svg class="icon"><use href="#i-chevron-left"/></svg></button>
           <h2 class="ob-screen-title">Ton Profil</h2>
-          <button class="ob-skip" onclick="AppUI.onboardingNext()">Passer</button>
+          <button class="ob-skip" data-action="ob-next">Passer</button>
         </div>
         <div class="ob-profile">
           <div class="ob-avatar" id="ob-avatar">🏋️</div>
@@ -592,26 +592,26 @@
           <div class="ob-profile-field">
             <label class="ob-field-label">Seances par semaine</label>
             <div class="ob-freq">
-              <button class="ob-freq-btn" onclick="AppUI.onboardingFreq(-1)"><svg class="icon"><use href="#i-minus"/></svg></button>
+              <button class="ob-freq-btn" data-action="ob-freq" data-dir="-1"><svg class="icon"><use href="#i-minus"/></svg></button>
               <span class="ob-freq-value" id="ob-freq">3</span>
               <span class="ob-freq-unit">x / sem</span>
-              <button class="ob-freq-btn" onclick="AppUI.onboardingFreq(1)"><svg class="icon"><use href="#i-plus"/></svg></button>
+              <button class="ob-freq-btn" data-action="ob-freq" data-dir="1"><svg class="icon"><use href="#i-plus"/></svg></button>
             </div>
           </div>
         </div>
-        <button class="ob-btn ob-btn--primary" onclick="AppUI.onboardingNext()">Suivant <svg class="icon"><use href="#i-arrow-right"/></svg></button>
+        <button class="ob-btn ob-btn--primary" data-action="ob-next">Suivant <svg class="icon"><use href="#i-arrow-right"/></svg></button>
       </div>
 
       <!-- Screen 5: Programme -->
       <div class="ob-screen" data-screen="4">
         <div class="ob-screen-head">
-          <button class="ob-back" onclick="AppUI.onboardingPrev()"><svg class="icon"><use href="#i-chevron-left"/></svg></button>
+          <button class="ob-back" data-action="ob-prev"><svg class="icon"><use href="#i-chevron-left"/></svg></button>
           <h2 class="ob-screen-title">Ton Programme</h2>
-          <button class="ob-skip" onclick="AppUI.onboardingNext()">Passer</button>
+          <button class="ob-skip" data-action="ob-next">Passer</button>
         </div>
         <p class="ob-prompt">On te recommande un programme complet, structuré par séances</p>
         <div class="ob-programs" id="ob-programs"></div>
-        <button class="ob-btn ob-btn--primary" id="ob-prog-next" onclick="AppUI.onboardingNext()">Suivant <svg class="icon"><use href="#i-arrow-right"/></svg></button>
+        <button class="ob-btn ob-btn--primary" id="ob-prog-next" data-action="ob-next">Suivant <svg class="icon"><use href="#i-arrow-right"/></svg></button>
       </div>
 
       <!-- Screen 6: First Win -->
@@ -628,7 +628,7 @@
             </div>
           </div>
           <p class="ob-celeb-sub">Ton aventure commence maintenant</p>
-          <button class="ob-btn ob-btn--primary ob-btn--glow" onclick="AppUI.finishOnboarding()">Commencer ma premiere seance <svg class="icon"><use href="#i-arrow-right"/></svg></button>
+          <button class="ob-btn ob-btn--primary ob-btn--glow" data-action="finish-onboarding">Commencer ma premiere seance <svg class="icon"><use href="#i-arrow-right"/></svg></button>
         </div>
       </div>
     </div>
@@ -637,7 +637,7 @@
     <div id="overlay-browse-packs" class="overlay">
       <div class="overlay-header">
         <h2>Programmes préconçus</h2>
-        <button class="overlay-close" onclick="AppUI.closeOverlay('overlay-browse-packs')"><svg class="icon"><use href="#i-x"/></svg></button>
+        <button class="overlay-close" data-action="close-overlay" data-overlay="overlay-browse-packs"><svg class="icon"><use href="#i-x"/></svg></button>
       </div>
       <div class="overlay-content">
         <p class="text-muted mb-20">Choisis un programme structuré. Chaque séance sera ajoutée à tes programmes, modifiable à tout moment.</p>
